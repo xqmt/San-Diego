@@ -2,97 +2,106 @@ local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/rel
 
 -- 🎨 Custom Theme: Rainbow Pastels Edition
 WindUI:AddTheme({
-    Name = "My Theme", -- theme name
+    Name = "RainbowPastel",
     
-    
-    -- More Soon!
-    
-    Accent = Color3.fromHex("#5865F2"),
-    Background = Color3.fromHex("#000000"), -- Accent
-    BackgroundTransparency = 0,
+    Accent = Color3.fromHex("#ffffff"),
+    Background = Color3.fromHex("#000000"),
+    BackgroundTransparency = 0.8,
     Outline = Color3.fromHex("#FFFFFF"),
     Text = Color3.fromHex("#FFFFFF"),
     Placeholder = Color3.fromHex("#7a7a7a"),
     Button = Color3.fromHex("#52525b"),
     Icon = Color3.fromHex("#5865F2"),
     
-    Hover = Color3.fromHex("#FFFFFF"), -- Text
-    BackgroundTransparency = 0.6,
+    Hover = Color3.fromHex("#FFFFFF"),
     
-    WindowBackground = Color3.fromHex("#000000"), -- Background
+    WindowBackground = Color3.fromHex("#000000"),
     WindowShadow = Color3.fromHex("#5865F2"),
     
-    DialogBackground = Color3.fromHex("#000000"), -- Background
-    DialogBackgroundTransparency = 0, -- BackgroundTransparency
-    DialogTitle = Color3.fromHex("#FFFFFF"), -- Text
-    DialogContent = Color3.fromHex("#FFFFFF"), -- Text
-    DialogIcon = Color3.fromHex("#5865F2"), -- Icon
+    DialogBackground = Color3.fromHex("#101010"),
+    DialogBackgroundTransparency = 0,
+    DialogTitle = Color3.fromHex("#FFFFFF"),
+    DialogContent = Color3.fromHex("#FFFFFF"),
+    DialogIcon = Color3.fromHex("#5865F2"),
     
-    WindowTopbarButtonIcon = Color3.fromHex("a1a1aa"), -- Icon
-    WindowTopbarTitle = Color3.fromHex("FFFFFF"), -- Text
-    WindowTopbarAuthor = Color3.fromHex("FFFFFF"), -- Text
-    WindowTopbarIcon = Color3.fromHex("FFFFFF"), -- Text
+    WindowTopbarButtonIcon = Color3.fromHex("a1a1aa"),
+    WindowTopbarTitle = Color3.fromHex("#FFFFFF"),
+    WindowTopbarAuthor = Color3.fromHex("#FFFFFF"),
+    WindowTopbarIcon = Color3.fromHex("#FFFFFF"),
     
-    TabBackground = Color3.fromHex("#FFFFFF"), -- Text
-    TabTitle = Color3.fromHex("#FFFFFF"), -- Text
-    TabIcon = Color3.fromHex("a1a1aa"), -- Icon
+    TabBackground = Color3.fromHex("#FFFFFF"),
+    TabTitle = Color3.fromHex("#FFFFFF"),
+    TabIcon = Color3.fromHex("#ffffff"),
     
-    ElementBackground = Color3.fromHex("#FFFFFF"), -- Text
-    ElementTitle = Color3.fromHex("#FFFFFF"), -- Text
-    ElementDesc = Color3.fromHex("#FFFFFF"), -- Text
-    ElementIcon = Color3.fromHex("#a1a1aa"), -- Icon
+    ElementBackground = Color3.fromHex("#FFFFFF"),
+    ElementTitle = Color3.fromHex("#FFFFFF"),
+    ElementDesc = Color3.fromHex("#FFFFFF"),
+    ElementIcon = Color3.fromHex("#FFFFFF"),
     
-    PopupBackground = Color3.fromHex("#101010"), -- Background
-    PopupBackgroundTransparency = 0, -- BackgroundTransparency
-    PopupTitle = Color3.fromHex("#FFFFFF"), -- Text
-    PopupContent = Color3.fromHex("#FFFFFF"), -- Text
-    PopupIcon = Color3.fromHex("#a1a1aa"), -- Icon
+    PopupBackground = Color3.fromHex("#101010"),
+    PopupBackgroundTransparency = 0,
+    PopupTitle = Color3.fromHex("#FFFFFF"),
+    PopupContent = Color3.fromHex("#FFFFFF"),
+    PopupIcon = Color3.fromHex("a1a1aa"),
     
-    DialogBackground = Color3.fromHex("#101010"), -- Background
-    DialogBackgroundTransparency = 0, -- Transparency
-    DialogTitle = Color3.fromHex("#FFFFFF"), -- Text
-    DialogContent = Color3.fromHex("#FFFFFF"), -- Text
-    DialogIcon = Color3.fromHex("#a1a1aa"), -- Icon
+    Toggle = Color3.fromHex("#5865F2"),
+    ToggleBar = Color3.fromHex("#FFFFFF"),
     
-    Toggle = Color3.fromHex("#5865F2"), -- Button
-    ToggleBar = Color3.fromHex("#FFFFFF"), -- White
+    Checkbox = Color3.fromHex("#52525b"),
+    CheckboxIcon = Color3.fromHex("#FFFFFF"),
     
-    Checkbox = Color3.fromHex("#52525b"), -- Button
-    CheckboxIcon = Color3.fromHex("#FFFFFF"), -- White
-    
-    Slider = Color3.fromHex("#5865F2"), -- Button
-    SliderThumb = Color3.fromHex("#FFFFFF"), -- White
-    
+    Slider = Color3.fromHex("#5865F2"),
+    SliderThumb = Color3.fromHex("#FFFFFF"),
 })
 
--- 🪟 Window
+-- 🪟 สร้าง Window แบบสมบูรณ์
 local Window = WindUI:CreateWindow({
     Title = "🌴 San Diego Auto Farm",
-    Icon = "gamepad-2",
-    Author = "if you're lag don't blame the script",
+    Icon = "monitor",
+    Author = "",
+    Folder = "SanDiegoFarm",
+    Size = UDim2.fromOffset(580, 460),
+    Transparent = true,
+    Theme = "RainbowPastel",
+    SideBarWidth = 170,
+    HasOutline = true,
 })
 
--- 🚀 เรียกใช้งาน Theme Rainbow Pastels
-WindUI:SetTheme("RainbowPastel")
+Window:EditOpenButton({
+    Title = "🌴 San Diego Auto Farm",
+    Icon = "monitor",
+    CornerRadius = UDim.new(2.5,3),
+    StrokeThickness = 2,
+    Color = ColorSequence.new(
+        Color3.fromHex("5865F2"), 
+        Color3.fromHex("FFFFFF")
+    ),
+    OnlyMobile = false,
+    Enabled = true,
+    Draggable = true,
+})
 
 Window:Tag({
     Title = "v1.2",
     Icon = "github",
-    Color = Color3.fromHex("#f472b6"),
+    Color = Color3.fromHex("#5865F2"),
     Radius = 10,
 })
 
 -- 📑 Tabs
+local ReadTab = Window:Tab({
+    Title = "Read",
+    Icon = "triangle-alert",
+})
+
 local MainTab = Window:Tab({
     Title = "Auto Farm",
     Icon = "bot",
-    Locked = false,
 })
 
 local MiscTab = Window:Tab({
     Title = "Misc",
-    Icon = "Sword-2",
-    Locked = false,
+    Icon = "sliders-horizontal",
 })
 
 --------------------------------------------------------------------
@@ -238,8 +247,8 @@ local function drawForwardPath(waypoints, currentIndex)
 		local beam = Instance.new("Beam")
 		beam.Attachment0 = attA
 		beam.Attachment1 = attB
-		beam.Width0 = 0.4
-		beam.Width1 = 0.4
+		beam.Width0 = 0.1
+		beam.Width1 = 0.1
 		beam.Transparency = NumberSequence.new(0.1)
 		beam.FaceCamera = true
 		beam.LightEmission = 0.8
@@ -787,7 +796,17 @@ end
 -- 🎛️ WINDUI ELEMENTS & CONTROLS
 --------------------------------------------------------------------
 
--- 🟢 1. Auto Farm Toggle
+-- แก้ไขให้ใช้ Paragraph แทน Title ที่ใส่ผิดโครงสร้าง
+ReadTab:Paragraph({
+    Title = "⚠️ Warning",
+    Content = ""
+})
+
+ReadTab:Paragraph({
+    Title = "ℹ️ If you're laggy don't blame the script!!",
+    Content = ""
+})
+
 MainTab:Toggle({
     Title = "Auto Farm",
     Desc = "",
@@ -804,7 +823,6 @@ MainTab:Toggle({
     end
 })
 
--- 🟢 2. Auto Sell Goods Toggle
 MainTab:Toggle({
     Title = "Auto Sell Goods",
     Desc = "",
@@ -816,7 +834,6 @@ MainTab:Toggle({
     end
 })
 
--- 🟢 3. Auto Launder Cash Toggle
 MainTab:Toggle({
     Title = "Auto Launder Cash",
     Desc = "",
@@ -828,7 +845,6 @@ MainTab:Toggle({
     end
 })
 
--- 🎚️ Fly Speed Slider
 MainTab:Slider({
     Title = "Fly Speed",
     Desc = "",
@@ -844,7 +860,6 @@ MainTab:Slider({
     end
 })
 
--- 🎚️ Travel Height Slider
 MainTab:Slider({
     Title = "Tween Height (Y)",
     Desc = "",
@@ -860,12 +875,11 @@ MainTab:Slider({
     end
 })
 
--- 🎚️ Target Amount Slider
 MainTab:Slider({
     Title = "Target Amount",
     Desc = "",
     Icon = "boxes",
-    Step = 0.1,
+    Step = 1,
     Value = {
         Min = 1,
         Max = 5,
@@ -876,7 +890,6 @@ MainTab:Slider({
     end
 })
 
--- 🎚️ Tween Delay Slider
 MainTab:Slider({
     Title = "Tween Delay (s)",
     Desc = "",
@@ -892,7 +905,6 @@ MainTab:Slider({
     end
 })
 
--- 🔽 Select Item Dropdown (แทนที่ Input)
 MainTab:Dropdown({
     Title = "Select Item",
     Desc = "",
@@ -910,7 +922,6 @@ MainTab:Dropdown({
     end
 })
 
--- 🟢 4. Boost FPS Toggle (อยู่ใน Tab Misc)
 MiscTab:Toggle({
     Title = "Boost FPS",
     Desc = "",
@@ -922,7 +933,6 @@ MiscTab:Toggle({
     end
 })
 
--- 🟢 5. Anti Gameplay Paused Toggle (อยู่ใน Tab Misc)
 MiscTab:Toggle({
     Title = "Anti Gameplay Paused",
     Desc = "",
