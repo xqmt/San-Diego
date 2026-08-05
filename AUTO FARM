@@ -1,15 +1,15 @@
 local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
 
--- 🎨 Custom Theme: Cyberpunk Neon Edition
+-- 🎨 Custom Theme: Rainbow Pastels Edition
 WindUI:AddTheme({
-    Name = "CyberNeon",
-    Accent = Color3.fromHex("#a855f7"),      -- สีม่วงนีออน เด่น สะอาดตา
-    Background = Color3.fromHex("#09090b"),  -- สีดำ deep dark
-    Outline = Color3.fromHex("#27272a"),     -- เส้นขอบเทาเข้ม ละมุน ไม่แยงตา
-    Text = Color3.fromHex("#f4f4f5"),        -- ข้อความสีขาวสว่าง อ่านง่าย
-    Placeholder = Color3.fromHex("#71717a"), -- ข้อความรอพิมพ์
-    Button = Color3.fromHex("#18181b"),      -- ปุ่มกดโทนเข้มเข้ากับพื้นหลัง
-    Icon = Color3.fromHex("#38bdf8"),        -- ไอคอนสีฟ้าสดใส (Sky Blue)
+    Name = "RainbowPastel",
+    Accent = Color3.fromHex("#f472b6"),      -- ชมพูพาสเทล (Pastel Pink)
+    Background = Color3.fromHex("#000000"),  -- พื้นหลังโทนสว่างจางๆ ละมุนตา
+    Outline = Color3.fromHex("#ffffff"),     -- ขอบสีชมพูอ่อน
+    Text = Color3.fromHex("#ffffff"),        -- ข้อความสีเทาเข้ม อ่านง่าย
+    Placeholder = Color3.fromHex("#ffffff"), -- ข้อความรอพิมพ์
+    Button = Color3.fromHex("#eef2ff"),      -- ปุ่มโทนม่วง/ฟ้าพาสเทลอ่อน
+    Icon = Color3.fromHex("#34d399"),        -- ไอคอนสีเขียวมิ้นท์พาสเทล (Mint)
 })
 
 -- 🪟 Window
@@ -17,19 +17,21 @@ local Window = WindUI:CreateWindow({
     Title = "🌴 San Diego Auto Farm",
     Icon = "gamepad-2",
     Author = "if you're lag don't blame the script",
+    Glass = true,          -- เปิดโหมดเอฟเฟกต์กระจก
+    Transparency = 0.35,   -- ปรับความจางของพื้นหลังกระจก (0 = ทึบ, 1 = ใสสนิท)
 })
 
--- 🚀 เรียกใช้งาน Theme ใหม่
-WindUI:SetTheme("CyberNeon")
+-- 🚀 เรียกใช้งาน Theme Rainbow Pastels
+WindUI:SetTheme("RainbowPastel")
 
 Window:Tag({
     Title = "v1.2",
-    Icon = "sparkles",
-    Color = Color3.fromHex("#a855f7"),
+    Icon = "github",
+    Color = Color3.fromHex("#f472b6"),
     Radius = 10,
 })
 
--- 📑 Tabs (ปรับเปลี่ยนไอคอนให้ตรงหมวดหมู่)
+-- 📑 Tabs
 local MainTab = Window:Tab({
     Title = "Auto Farm",
     Icon = "bot",
@@ -38,7 +40,7 @@ local MainTab = Window:Tab({
 
 local MiscTab = Window:Tab({
     Title = "Misc",
-    Icon = "setting-2",
+    Icon = "setting",
     Locked = false,
 })
 
@@ -731,7 +733,7 @@ local function mainLoop()
 end
 
 --------------------------------------------------------------------
--- 🎛️ WINDUI ELEMENTS & CONTROLS (เปลี่ยนไอคอนใหม่ทั้งหมด)
+-- 🎛️ WINDUI ELEMENTS & CONTROLS
 --------------------------------------------------------------------
 
 -- 🟢 1. Auto Farm Toggle
