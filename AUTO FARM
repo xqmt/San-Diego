@@ -841,15 +841,21 @@ MainTab:Slider({
     end
 })
 
--- Inputs ตั้งค่าส่วนอื่นๆ
-MainTab:Input({
-    Title = "Item Name",
+-- 🔽 Select Item Dropdown (แทนที่ Input)
+MainTab:Dropdown({
+    Title = "Select Item",
     Desc = "",
     Icon = "package-search",
+    Values = {
+        "Crate Of Avacados",
+        "Wagyu Beef",
+        "Witches Brew",
+        "Fake Designer Sneakers",
+        "Fake Diamond Ring"
+    },
     Value = CONFIG.ItemName,
-    Placeholder = "Fake Diamond Ring",
-    Callback = function(text)
-        CONFIG.ItemName = text
+    Callback = function(selected)
+        CONFIG.ItemName = selected
     end
 })
 
