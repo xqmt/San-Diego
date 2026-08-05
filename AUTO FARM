@@ -1,19 +1,106 @@
+local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
+
+-- 🎨 Custom Theme
+WindUI:AddTheme({
+    Name = "My Theme",
+    Accent = Color3.fromHex("#18181b"),
+    Background = Color3.fromHex("#101010"),
+    BackgroundTransparency = 0,
+    Outline = Color3.fromHex("#FFFFFF"),
+    Text = Color3.fromHex("#FFFFFF"),
+    Placeholder = Color3.fromHex("#7a7a7a"),
+    Button = Color3.fromHex("#52525b"),
+    Icon = Color3.fromHex("#a1a1aa"),
+    
+    Hover = Color3.fromHex("#FFFFFF"),
+    
+    WindowBackground = Color3.fromHex("#101010"),
+    WindowShadow = Color3.fromHex("#000000"),
+    
+    DialogBackground = Color3.fromHex("#101010"),
+    DialogBackgroundTransparency = 0,
+    DialogTitle = Color3.fromHex("#FFFFFF"),
+    DialogContent = Color3.fromHex("#FFFFFF"),
+    DialogIcon = Color3.fromHex("#a1a1aa"),
+    
+    WindowTopbarButtonIcon = Color3.fromHex("#a1a1aa"),
+    WindowTopbarTitle = Color3.fromHex("#FFFFFF"),
+    WindowTopbarAuthor = Color3.fromHex("#FFFFFF"),
+    WindowTopbarIcon = Color3.fromHex("#FFFFFF"),
+    
+    TabBackground = Color3.fromHex("#FFFFFF"),
+    TabTitle = Color3.fromHex("#FFFFFF"),
+    TabIcon = Color3.fromHex("#a1a1aa"),
+    
+    ElementBackground = Color3.fromHex("#101010"),
+    ElementTitle = Color3.fromHex("#FFFFFF"),
+    ElementDesc = Color3.fromHex("#FFFFFF"),
+    ElementIcon = Color3.fromHex("#a1a1aa"),
+    
+    PopupBackground = Color3.fromHex("#101010"),
+    PopupBackgroundTransparency = 0,
+    PopupTitle = Color3.fromHex("#FFFFFF"),
+    PopupContent = Color3.fromHex("#FFFFFF"),
+    PopupIcon = Color3.fromHex("#a1a1aa"),
+    
+    Toggle = Color3.fromHex("#52525b"),
+    ToggleBar = Color3.fromHex("#FFFFFF"),
+    
+    Checkbox = Color3.fromHex("#52525b"),
+    CheckboxIcon = Color3.fromHex("#FFFFFF"),
+    
+    Slider = Color3.fromHex("#52525b"),
+    SliderThumb = Color3.fromHex("#FFFFFF"),
+})
+
+-- 🪟 Window & Tag
+local Window = WindUI:CreateWindow({
+    Title = "🌴 San Diego Auto Farm",
+    Icon = "sword",
+    Author = "if you're lag don't blame the script",
+    Theme = "My Theme",
+})
+
+Window:Tag({
+    Title = "v1.2",
+    Icon = "github",
+    Color = Color3.fromHex("#30ff6a"),
+    Radius = 10,
+})
+
+-- 📑 Tabs
+local MainTab = Window:Tab({
+    Title = "Auto Farm",
+    Icon = "bird",
+    Locked = false,
+})
+
+local MiscTab = Window:Tab({
+    Title = "Misc",
+    Icon = "settings",
+    Locked = false,
+})
+
+--------------------------------------------------------------------
+-- ⚙️ VARIABLES & CONFIGS
+--------------------------------------------------------------------
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
-local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
+local Lighting = game:GetService("Lighting")
 
 local player = Players.LocalPlayer
 
--- Global State & Settings
 local isRunning = false
 local autoSell = true
 local autoLaunder = true
+local fpsBoostActive = false
+local antiPauseActive = false
 local lastVehicle = nil
 
 local CONFIG = {
-	Speed = 300,
-	Height = 2.5,
+	Speed = 280,
+	Height = 2,
 	Amount = 5,
 	TweenDelay = 0, 
 	ItemName = "Fake Diamond Ring",
@@ -28,6 +115,18 @@ local PROTECTED_ITEMS = {
 
 local function isProtectedItem(itemName)
 	return PROTECTED_ITEMS[string.lower(itemName)] == true
+end
+
+local function applyAntiPause(state)
+	antiPauseActive = state
+	if state then
+		pcall(function()
+			local pauseScript = game:GetService("CoreGui"):FindFirstChild("RobloxGui") and game:GetService("CoreGui").RobloxGui:FindFirstChild("CoreScripts/NetworkPause")
+			if pauseScript then
+				pauseScript:Destroy()
+			end
+		end)
+	end
 end
 
 local postBuyWaypoints = {
@@ -57,346 +156,221 @@ local postSellWaypoints = {
 	Vector3.new(6805.6, 17.4, -34.4)
 }
 
--- 1. Create Main GUI Structure (Ultra Clean Modern Minimalist + Glow Effects)
-local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "SanDiegoAutoFarmGUI_V3"
-screenGui.ResetOnSpawn = false
+--------------------------------------------------------------------
+-- 🌈 WAYPOINT LINE SYSTEM
+--------------------------------------------------------------------
+local pathFolder = workspace:FindFirstChild("AutoFarm_PathFolder") or Instance.new("Folder")
+pathFolder.Name = "AutoFarm_PathFolder"
+pathFolder.Parent = workspace
 
-local successCore, _ = pcall(function()
-	screenGui.Parent = game:GetService("CoreGui")
-end)
-if not successCore then
-	screenGui.Parent = player:WaitForChild("PlayerGui")
+local activePathObjects = {}
+local rainbowConnection = nil
+
+local function clearWaylines()
+	if rainbowConnection then
+		rainbowConnection:Disconnect()
+		rainbowConnection = nil
+	end
+	for _, obj in ipairs(activePathObjects) do
+		if obj and obj.Parent then
+			obj:Destroy()
+		end
+	end
+	activePathObjects = {}
+	pathFolder:ClearAllChildren()
 end
 
--- Main Window Frame (ปรับความกว้างจาก 520 เป็น 480 ให้กระชับขึ้น)
-local mainFrame = Instance.new("Frame")
-mainFrame.Size = UDim2.new(0, 480, 0, 500)
-mainFrame.Position = UDim2.new(0.5, -240, 0.25, 0)
-mainFrame.BackgroundColor3 = Color3.fromRGB(15, 17, 23)
-mainFrame.BorderSizePixel = 0
-mainFrame.Active = true
-mainFrame.ClipsDescendants = false
-mainFrame.Parent = screenGui
+local function drawForwardPath(waypoints, currentIndex)
+	clearWaylines()
+	if not waypoints or currentIndex > #waypoints then return end
 
-local uiCornerMain = Instance.new("UICorner")
-uiCornerMain.CornerRadius = UDim.new(0, 14)
-uiCornerMain.Parent = mainFrame
+	local char = player.Character
+	if not char then return end
+	local hrp = char:FindFirstChild("HumanoidRootPart")
+	if not hrp then return end
 
--- Subtle Outer Glow Effect
-local glowEffect = Instance.new("UIStroke")
-glowEffect.Color = Color3.fromRGB(52, 152, 219)
-glowEffect.Transparency = 0.6
-glowEffect.Thickness = 1.5
-glowEffect.Parent = mainFrame
+	local pointsToDraw = {}
+	table.insert(pointsToDraw, hrp.Position)
 
--- Subtle Inner Shadow / Frame Accent
-local mainStroke = Instance.new("UIStroke")
-mainStroke.Color = Color3.fromRGB(40, 44, 58)
-mainStroke.Transparency = 0.3
-mainStroke.Thickness = 1
-mainStroke.Parent = mainFrame
+	for i = currentIndex, #waypoints do
+		table.insert(pointsToDraw, waypoints[i])
+	end
 
--- Title Bar
-local titleBar = Instance.new("Frame")
-titleBar.Size = UDim2.new(1, 0, 0, 50)
-titleBar.BackgroundTransparency = 1
-titleBar.BorderSizePixel = 0
-titleBar.Parent = mainFrame
+	local beams = {}
 
-local titleLabel = Instance.new("TextLabel")
-titleLabel.Size = UDim2.new(1, -60, 1, 0)
-titleLabel.Position = UDim2.new(0, 18, 0, 0)
-titleLabel.BackgroundTransparency = 1
-titleLabel.Text = "🌴 SAN DIEGO AUTO FARM"
-titleLabel.TextColor3 = Color3.fromRGB(245, 246, 250)
-titleLabel.TextSize = 15
-titleLabel.Font = Enum.Font.GothamBold
-titleLabel.TextXAlignment = Enum.TextXAlignment.Left
-titleLabel.Parent = titleBar
+	for i = 1, #pointsToDraw - 1 do
+		local pA = pointsToDraw[i]
+		local pB = pointsToDraw[i+1]
 
-local titleAccent = Instance.new("Frame")
-titleAccent.Size = UDim2.new(0, 4, 0, 16)
-titleAccent.Position = UDim2.new(0, 0, 0.5, -8)
-titleAccent.BackgroundColor3 = Color3.fromRGB(52, 152, 219)
-titleAccent.BorderSizePixel = 0
-titleAccent.Parent = titleBar
+		local partA = Instance.new("Part")
+		partA.Size = Vector3.new(0.1, 0.1, 0.1)
+		partA.Position = pA
+		partA.Anchored = true
+		partA.CanCollide = false
+		partA.Transparency = 1
+		partA.Parent = pathFolder
 
-local accentCorner = Instance.new("UICorner")
-accentCorner.CornerRadius = UDim.new(1, 0)
-accentCorner.Parent = titleAccent
+		local partB = Instance.new("Part")
+		partB.Size = Vector3.new(0.1, 0.1, 0.1)
+		partB.Position = pB
+		partB.Anchored = true
+		partB.CanCollide = false
+		partB.Transparency = 1
+		partB.Parent = pathFolder
 
--- Minimize Button (Minimal Style)
-local minBtn = Instance.new("TextButton")
-minBtn.Size = UDim2.new(0, 28, 0, 28)
-minBtn.Position = UDim2.new(1, -38, 0, 11)
-minBtn.BackgroundColor3 = Color3.fromRGB(25, 28, 38)
-minBtn.Text = "—"
-minBtn.TextColor3 = Color3.fromRGB(180, 185, 200)
-minBtn.TextSize = 12
-minBtn.Font = Enum.Font.GothamBold
-minBtn.Parent = titleBar
+		local attA = Instance.new("Attachment", partA)
+		local attB = Instance.new("Attachment", partB)
 
-local minCorner = Instance.new("UICorner")
-minCorner.CornerRadius = UDim.new(0, 8)
-minCorner.Parent = minBtn
+		local beam = Instance.new("Beam")
+		beam.Attachment0 = attA
+		beam.Attachment1 = attB
+		beam.Width0 = 0.4
+		beam.Width1 = 0.4
+		beam.Transparency = NumberSequence.new(0.1)
+		beam.FaceCamera = true
+		beam.LightEmission = 0.8
+		beam.LightInfluence = 0
+		beam.Parent = pathFolder
 
-local minStroke = Instance.new("UIStroke")
-minStroke.Color = Color3.fromRGB(45, 50, 65)
-minStroke.Transparency = 0.5
-minStroke.Thickness = 1
-minStroke.Parent = minBtn
+		table.insert(activePathObjects, partA)
+		table.insert(activePathObjects, partB)
+		table.insert(activePathObjects, beam)
+		table.insert(beams, {Beam = beam, Index = i})
+	end
 
--- Content Container
-local contentContainer = Instance.new("ScrollingFrame")
-contentContainer.Size = UDim2.new(1, -28, 1, -85)
-contentContainer.Position = UDim2.new(0, 14, 0, 55)
-contentContainer.BackgroundTransparency = 1
-contentContainer.BorderSizePixel = 0
-contentContainer.CanvasSize = UDim2.new(0, 0, 0, 410)
-contentContainer.ScrollBarThickness = 2
-contentContainer.ScrollBarImageColor3 = Color3.fromRGB(52, 152, 219)
-contentContainer.Parent = mainFrame
+	rainbowConnection = RunService.RenderStepped:Connect(function()
+		local speed = 0.15
+		local hueOffset = (tick() * speed) % 1
 
--- เพิ่มข้อความสีแดงด้านล่าง San Diego auto farm (Lag Warning)
-local warningLabel = Instance.new("TextLabel")
-warningLabel.Size = UDim2.new(1, -28, 0, 20)
-warningLabel.Position = UDim2.new(0, 14, 1, -25)
-warningLabel.BackgroundTransparency = 1
-warningLabel.Text = "if you're lag don't blame the script"
-warningLabel.TextColor3 = Color3.fromRGB(231, 76, 60)
-warningLabel.TextSize = 11
-warningLabel.Font = Enum.Font.GothamBold
-warningLabel.TextXAlignment = Enum.TextXAlignment.Center
-warningLabel.Parent = mainFrame
+		for _, item in ipairs(beams) do
+			if item.Beam and item.Beam.Parent then
+				local hueA = (hueOffset + (item.Index * 0.05)) % 1
+				local hueB = (hueOffset + ((item.Index + 1) * 0.05)) % 1
 
--- Window Dragging
-local dragging, dragInput, dragStart, startPos
-titleBar.InputBegan:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-		dragging = true
-		dragStart = input.Position
-		startPos = mainFrame.Position
-		input.Changed:Connect(function()
-			if input.UserInputState == Enum.UserInputState.End then
-				dragging = false
+				local colorA = Color3.fromHSV(hueA, 0.45, 1)
+				local colorB = Color3.fromHSV(hueB, 0.45, 1)
+
+				item.Beam.Color = ColorSequence.new({
+					ColorSequenceKeypoint.new(0, colorA),
+					ColorSequenceKeypoint.new(1, colorB)
+				})
 			end
-		end)
-	end
-end)
-
-titleBar.InputChanged:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-		dragInput = input
-	end
-end)
-
-UserInputService.InputChanged:Connect(function(input)
-	if input == dragInput and dragging then
-		local delta = input.Position - dragStart
-		mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-	end
-end)
-
--- UI Builder Elements (ลดความกว้างช่อง TextBox ให้แคบลงที่ 38% และขยาย Label เป็น 60%)
-local function createInputRow(parent, labelText, defaultVal, yPos, callback)
-	local label = Instance.new("TextLabel")
-	label.Size = UDim2.new(0.60, 0, 0, 34)
-	label.Position = UDim2.new(0, 0, 0, yPos)
-	label.BackgroundTransparency = 1
-	label.Text = labelText
-	label.TextColor3 = Color3.fromRGB(160, 165, 180)
-	label.TextSize = 12
-	label.Font = Enum.Font.GothamMedium
-	label.TextXAlignment = Enum.TextXAlignment.Left
-	label.Parent = parent
-
-	local boxWrapper = Instance.new("Frame")
-	boxWrapper.Size = UDim2.new(0.38, 0, 0, 34)
-	boxWrapper.Position = UDim2.new(0.62, 0, 0, yPos)
-	boxWrapper.BackgroundColor3 = Color3.fromRGB(22, 25, 35)
-	boxWrapper.BorderSizePixel = 0
-	boxWrapper.Parent = parent
-
-	local boxCorner = Instance.new("UICorner")
-	boxCorner.CornerRadius = UDim.new(0, 8)
-	boxCorner.Parent = boxWrapper
-
-	local boxStroke = Instance.new("UIStroke")
-	boxStroke.Color = Color3.fromRGB(40, 45, 60)
-	boxStroke.Transparency = 0.5
-	boxStroke.Thickness = 1
-	boxStroke.Parent = boxWrapper
-
-	local box = Instance.new("TextBox")
-	box.Size = UDim2.new(1, -16, 1, 0)
-	box.Position = UDim2.new(0, 8, 0, 0)
-	box.BackgroundTransparency = 1
-	box.Text = tostring(defaultVal)
-	box.TextColor3 = Color3.fromRGB(240, 242, 245)
-	box.TextSize = 12
-	box.Font = Enum.Font.Gotham
-	box.TextXAlignment = Enum.TextXAlignment.Right
-	box.ClearTextOnFocus = false
-	box.Parent = boxWrapper
-
-	box.Focused:Connect(function()
-		TweenService:Create(boxStroke, TweenInfo.new(0.2), {Color = Color3.fromRGB(52, 152, 219), Transparency = 0}):Play()
-	end)
-	box.FocusLost:Connect(function(enterPressed)
-		TweenService:Create(boxStroke, TweenInfo.new(0.2), {Color = Color3.fromRGB(40, 45, 60), Transparency = 0.5}):Play()
-		callback(box.Text)
+		end
 	end)
 end
 
-local function createToggleRow(parent, labelText, defaultState, yPos, callback)
-	local label = Instance.new("TextLabel")
-	label.Size = UDim2.new(0.6, 0, 0, 34)
-	label.Position = UDim2.new(0, 0, 0, yPos)
-	label.BackgroundTransparency = 1
-	label.Text = labelText
-	label.TextColor3 = Color3.fromRGB(160, 165, 180)
-	label.TextSize = 12
-	label.Font = Enum.Font.GothamMedium
-	label.TextXAlignment = Enum.TextXAlignment.Left
-	label.Parent = parent
+--------------------------------------------------------------------
+-- ⚡ FPS BOOST
+--------------------------------------------------------------------
+local originalLightingSettings = {}
+local fpsConnections = {}
 
-	local toggleBtn = Instance.new("TextButton")
-	toggleBtn.Size = UDim2.new(0, 52, 0, 26)
-	toggleBtn.Position = UDim2.new(1, -52, 0, yPos + 4)
-	toggleBtn.BackgroundColor3 = defaultState and Color3.fromRGB(46, 204, 113) or Color3.fromRGB(35, 39, 52)
-	toggleBtn.Text = ""
-	toggleBtn.AutoButtonColor = false
-	toggleBtn.Parent = parent
+local function stripCharacter(char)
+	if not char then return end
+	local children = char:GetChildren()
+	for i = #children, 1, -1 do
+		local item = children[i]
+		if item:IsA("Accessory") or item:IsA("Clothing") or item:IsA("ShirtGraphic") or item:IsA("Shirt") or item:IsA("Pants") or item:IsA("CharacterMesh") then
+			pcall(function() item:Destroy() end)
+		end
+	end
+end
 
-	local toggleCorner = Instance.new("UICorner")
-	toggleCorner.CornerRadius = UDim.new(1, 0)
-	toggleCorner.Parent = toggleBtn
+local function optimizeInst(v)
+	if not v then return end
+	pcall(function()
+		if v:IsA("BasePart") then
+			v.Material = Enum.Material.SmoothPlastic
+			v.CastShadow = false
+			v.Reflectance = 0
+		elseif v:IsA("Decal") or v:IsA("Texture") then
+			v:Destroy()
+		elseif v:IsA("ParticleEmitter") or v:IsA("Trail") or v:IsA("Smoke") or v:IsA("Fire") or v:IsA("Sparkles") then
+			v.Enabled = false
+		elseif v:IsA("Light") then
+			v.Enabled = false
+		end
+	end)
+end
 
-	local toggleStroke = Instance.new("UIStroke")
-	toggleStroke.Color = defaultState and Color3.fromRGB(46, 204, 113) or Color3.fromRGB(55, 60, 75)
-	toggleStroke.Transparency = 0.3
-	toggleStroke.Thickness = 1
-	toggleStroke.Parent = toggleBtn
+local function applyFPSBoost(state)
+	fpsBoostActive = state
+	if state then
+		originalLightingSettings.GlobalShadows = Lighting.GlobalShadows
+		originalLightingSettings.OutdoorAmbient = Lighting.OutdoorAmbient
+		originalLightingSettings.Ambient = Lighting.Ambient
+		originalLightingSettings.FogEnd = Lighting.FogEnd
+		originalLightingSettings.Technology = Lighting.Technology
 
-	local circle = Instance.new("Frame")
-	circle.Size = UDim2.new(0, 18, 0, 18)
-	circle.Position = defaultState and UDim2.new(1, -22, 0.5, -9) or UDim2.new(0, 4, 0.5, -9)
-	circle.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-	circle.BorderSizePixel = 0
-	circle.Parent = toggleBtn
-
-	local circleCorner = Instance.new("UICorner")
-	circleCorner.CornerRadius = UDim.new(1, 0)
-	circleCorner.Parent = circle
-
-	local state = defaultState
-	toggleBtn.MouseButton1Click:Connect(function()
-		state = not state
+		Lighting.GlobalShadows = false
+		Lighting.OutdoorAmbient = Color3.fromRGB(0, 0, 0)
+		Lighting.Ambient = Color3.fromRGB(15, 15, 15)
+		Lighting.FogEnd = 9e9
 		
-		local targetColor = state and Color3.fromRGB(46, 204, 113) or Color3.fromRGB(35, 39, 52)
-		local targetPos = state and UDim2.new(1, -22, 0.5, -9) or UDim2.new(0, 4, 0.5, -9)
+		pcall(function() Lighting.Technology = Enum.Technology.Compatibility end)
 
-		TweenService:Create(toggleBtn, TweenInfo.new(0.2, Enum.EasingStyle.Quart), {BackgroundColor3 = targetColor}):Play()
-		TweenService:Create(circle, TweenInfo.new(0.2, Enum.EasingStyle.Quart), {Position = targetPos}):Play()
-		TweenService:Create(toggleStroke, TweenInfo.new(0.2), {Color = targetColor}):Play()
+		local lightingChildren = Lighting:GetChildren()
+		for i = #lightingChildren, 1, -1 do
+			local child = lightingChildren[i]
+			if child:IsA("Sky") or child:IsA("Atmosphere") or child:IsA("PostEffect") or child:IsA("BloomEffect") or child:IsA("BlurEffect") or child:IsA("SunRaysEffect") then
+				pcall(function() child:Destroy() end)
+			end
+		end
+		
+		local darkSky = Instance.new("Sky")
+		darkSky.Name = "FPSBoostSky"
+		darkSky.SkyboxBk = "rbxassetid://0"
+		darkSky.SkyboxDn = "rbxassetid://0"
+		darkSky.SkyboxFt = "rbxassetid://0"
+		darkSky.SkyboxLf = "rbxassetid://0"
+		darkSky.SkyboxRt = "rbxassetid://0"
+		darkSky.SkyboxUp = "rbxassetid://0"
+		darkSky.SkyboxColor = Color3.fromRGB(10, 10, 10)
+		darkSky.Parent = Lighting
 
-		callback(state)
-	end)
+		local descendants = workspace:GetDescendants()
+		for i = 1, #descendants do optimizeInst(descendants[i]) end
+
+		local connAdded = workspace.DescendantAdded:Connect(function(v)
+			if fpsBoostActive then task.wait() optimizeInst(v) end
+		end)
+		table.insert(fpsConnections, connAdded)
+
+		for _, p in ipairs(Players:GetPlayers()) do
+			if p.Character then stripCharacter(p.Character) end
+			local connChar = p.CharacterAdded:Connect(function(char)
+				if fpsBoostActive then
+					char:WaitForChild("Humanoid", 5)
+					task.wait(0.2)
+					stripCharacter(char)
+				end
+			end)
+			table.insert(fpsConnections, connChar)
+		end
+	else
+		for _, conn in ipairs(fpsConnections) do if conn then conn:Disconnect() end end
+		fpsConnections = {}
+		Lighting.GlobalShadows = originalLightingSettings.GlobalShadows or true
+		Lighting.OutdoorAmbient = originalLightingSettings.OutdoorAmbient or Color3.fromRGB(128, 128, 128)
+		Lighting.Ambient = originalLightingSettings.Ambient or Color3.fromRGB(128, 128, 128)
+		local currentSky = Lighting:FindFirstChild("FPSBoostSky")
+		if currentSky then currentSky:Destroy() end
+	end
 end
 
--- Render Configuration Rows
-createInputRow(contentContainer, "Fly Speed", CONFIG.Speed, 0, function(txt) CONFIG.Speed = tonumber(txt) or CONFIG.Speed end)
-createInputRow(contentContainer, "Travel Height (Y)", CONFIG.Height, 42, function(txt) CONFIG.Height = tonumber(txt) or CONFIG.Height end)
-createInputRow(contentContainer, "Target Amount", CONFIG.Amount, 84, function(txt) CONFIG.Amount = tonumber(txt) or CONFIG.Amount end)
-createInputRow(contentContainer, "Item Name", CONFIG.ItemName, 126, function(txt) CONFIG.ItemName = txt end)
-createInputRow(contentContainer, "Tween Delay (s)", CONFIG.TweenDelay, 168, function(txt) CONFIG.TweenDelay = tonumber(txt) or CONFIG.TweenDelay end)
-
-createToggleRow(contentContainer, "Auto Sell Goods", autoSell, 215, function(state) autoSell = state end)
-createToggleRow(contentContainer, "Auto Launder Cash", autoLaunder, 257, function(state) autoLaunder = state end)
-
--- Minimal Status Banner Box
-local statusWrapper = Instance.new("Frame")
-statusWrapper.Size = UDim2.new(1, 0, 0, 36)
-statusWrapper.Position = UDim2.new(0, 0, 0, 308)
-statusWrapper.BackgroundColor3 = Color3.fromRGB(20, 23, 32)
-statusWrapper.BorderSizePixel = 0
-statusWrapper.Parent = contentContainer
-
-local statusCorner = Instance.new("UICorner")
-statusCorner.CornerRadius = UDim.new(0, 8)
-statusCorner.Parent = statusWrapper
-
-local statusStroke = Instance.new("UIStroke")
-statusStroke.Color = Color3.fromRGB(35, 40, 55)
-statusStroke.Transparency = 0.5
-statusStroke.Thickness = 1
-statusStroke.Parent = statusWrapper
-
-local statusLabel = Instance.new("TextLabel")
-statusLabel.Size = UDim2.new(1, -20, 1, 0)
-statusLabel.Position = UDim2.new(0, 10, 0, 0)
-statusLabel.BackgroundTransparency = 1
-statusLabel.Text = "Status: Idle"
-statusLabel.TextColor3 = Color3.fromRGB(140, 145, 165)
-statusLabel.TextSize = 11
-statusLabel.Font = Enum.Font.GothamMedium
-statusLabel.TextXAlignment = Enum.TextXAlignment.Left
-statusLabel.Parent = statusWrapper
-
--- Start / Stop Action Button (Sleek Gradient & Glow)
-local startBtn = Instance.new("TextButton")
-startBtn.Size = UDim2.new(1, 0, 0, 42)
-startBtn.Position = UDim2.new(0, 0, 0, 356)
-startBtn.BackgroundColor3 = Color3.fromRGB(46, 204, 113)
-startBtn.Text = "START FARMING"
-startBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-startBtn.TextSize = 13
-startBtn.Font = Enum.Font.GothamBold
-startBtn.AutoButtonColor = false
-startBtn.Parent = contentContainer
-
-local startCorner = Instance.new("UICorner")
-startCorner.CornerRadius = UDim.new(0, 8)
-startCorner.Parent = startBtn
-
-local startGlow = Instance.new("UIStroke")
-startGlow.Color = Color3.fromRGB(46, 204, 113)
-startGlow.Transparency = 0.4
-startGlow.Thickness = 1.5
-startGlow.Parent = startBtn
-
--- Minimize Functionality with Tweening
-local isMinimized = false
-minBtn.MouseButton1Click:Connect(function()
-	isMinimized = not isMinimized
-	if isMinimized then
-		mainFrame:TweenSize(UDim2.new(0, 480, 0, 50), Enum.EasingDirection.Out, Enum.EasingStyle.Quart, 0.3, true)
-		minBtn.Text = "+"
-		contentContainer.Visible = false
-		warningLabel.Visible = false
-	else
-		mainFrame:TweenSize(UDim2.new(0, 480, 0, 500), Enum.EasingDirection.Out, Enum.EasingStyle.Quart, 0.3, true)
-		minBtn.Text = "—"
-		contentContainer.Visible = true
-		warningLabel.Visible = true
-	end
-end)
-
--- 2. Game Interaction Core Functions
+--------------------------------------------------------------------
+-- 🧠 TARGET & ROUTING HELPERS
+--------------------------------------------------------------------
 local function findTarget(keyword)
 	local key = string.lower(keyword)
-
 	for _, prompt in ipairs(workspace:GetDescendants()) do
 		if prompt:IsA("ProximityPrompt") then
 			local objText = string.lower(prompt.ObjectText or "")
 			local actText = string.lower(prompt.ActionText or "")
 			local parentName = string.lower(prompt.Parent and prompt.Parent.Name or "")
-			
 			if string.find(objText, key) or string.find(actText, key) or string.find(parentName, key) then
 				local targetPart = prompt:FindFirstAncestorWhichIsA("BasePart") or prompt.Parent
-				if targetPart:IsA("BasePart") then
-					return targetPart, prompt
+				if targetPart:IsA("BasePart") then return targetPart, prompt
 				elseif targetPart:IsA("Model") then
 					local part = targetPart.PrimaryPart or targetPart:FindFirstChildWhichIsA("BasePart", true)
 					if part then return part, prompt end
@@ -404,69 +378,30 @@ local function findTarget(keyword)
 			end
 		end
 	end
-
-	for _, obj in ipairs(workspace:GetDescendants()) do
-		if string.find(string.lower(obj.Name), key) then
-			if obj:IsA("BasePart") then
-				return obj, obj:FindFirstChildOfClass("ProximityPrompt")
-			elseif obj:IsA("Model") then
-				local part = obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart", true)
-				if part then return part, obj:FindFirstChildWhichIsA("ProximityPrompt", true) end
-			end
-		end
-	end
-
 	return nil, nil
 end
 
 local function findNearestTargetToPos(keyword, pos)
 	local key = string.lower(keyword)
-	local nearestPart = nil
-	local nearestPrompt = nil
+	local nearestPart, nearestPrompt = nil, nil
 	local minDistance = math.huge
-
-	local function checkAndAdd(part, prompt)
-		if part and part:IsA("BasePart") then
-			local dist = (pos - part.Position).Magnitude
-			if dist < minDistance then
-				minDistance = dist
-				nearestPart = part
-				nearestPrompt = prompt
-			end
-		end
-	end
-
 	for _, prompt in ipairs(workspace:GetDescendants()) do
 		if prompt:IsA("ProximityPrompt") then
 			local objText = string.lower(prompt.ObjectText or "")
 			local actText = string.lower(prompt.ActionText or "")
 			local parentName = string.lower(prompt.Parent and prompt.Parent.Name or "")
-			
 			if string.find(objText, key) or string.find(actText, key) or string.find(parentName, key) then
 				local targetPart = prompt:FindFirstAncestorWhichIsA("BasePart") or prompt.Parent
-				if targetPart:IsA("BasePart") then
-					checkAndAdd(targetPart, prompt)
-				elseif targetPart:IsA("Model") then
-					local part = targetPart.PrimaryPart or targetPart:FindFirstChildWhichIsA("BasePart", true)
-					checkAndAdd(part, prompt)
+				if targetPart then
+					local part = targetPart:IsA("BasePart") and targetPart or targetPart.PrimaryPart or targetPart:FindFirstChildWhichIsA("BasePart", true)
+					if part then
+						local dist = (pos - part.Position).Magnitude
+						if dist < minDistance then minDistance = dist nearestPart = part nearestPrompt = prompt end
+					end
 				end
 			end
 		end
 	end
-
-	if not nearestPart then
-		for _, obj in ipairs(workspace:GetDescendants()) do
-			if string.find(string.lower(obj.Name), key) then
-				if obj:IsA("BasePart") then
-					checkAndAdd(obj, obj:FindFirstChildOfClass("ProximityPrompt"))
-				elseif obj:IsA("Model") then
-					local part = obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart", true)
-					checkAndAdd(part, obj:FindFirstChildWhichIsA("ProximityPrompt", true))
-				end
-			end
-		end
-	end
-
 	return nearestPart, nearestPrompt
 end
 
@@ -499,7 +434,6 @@ local function getInVehicle()
 	local humanoid = char:FindFirstChildOfClass("Humanoid")
 	local hrp = char:FindFirstChild("HumanoidRootPart")
 	if not hrp or not humanoid or humanoid.SeatPart then return end
-
 	local seat = lastVehicle:FindFirstChildWhichIsA("VehicleSeat", true) or lastVehicle:FindFirstChildWhichIsA("Seat", true)
 	if seat then
 		hrp.CFrame = seat.CFrame + Vector3.new(0, 2, 0)
@@ -509,9 +443,19 @@ local function getInVehicle()
 	end
 end
 
---------------------------------------------------------------------
--- 🔥 1. VELOCITY SYSTEM + NOCLIP + FLOAT PLATFORM SYSTEM
---------------------------------------------------------------------
+local function getNearestWaypointIndex(waypoints, currentPos)
+	local closestIdx = 1
+	local minDist = math.huge
+	for i, wp in ipairs(waypoints) do
+		local dist = (Vector3.new(currentPos.X, wp.Y, currentPos.Z) - wp).Magnitude
+		if dist < minDist then
+			minDist = dist
+			closestIdx = i
+		end
+	end
+	return closestIdx
+end
+
 local function moveToPositionVelocity(targetPos)
 	local char = player.Character
 	if not char then return false end
@@ -528,7 +472,7 @@ local function moveToPositionVelocity(targetPos)
 
 	local floatPart = Instance.new("Part")
 	floatPart.Name = "AntiFall_FloatPlatform"
-	floatPart.Size = Vector3.new(12, 1, 12)
+	floatPart.Size = Vector3.new(15, 1, 15)
 	floatPart.Anchored = true
 	floatPart.CanCollide = true
 	floatPart.Transparency = 1
@@ -544,114 +488,81 @@ local function moveToPositionVelocity(targetPos)
 	bodyGyro.CFrame = movePart.CFrame
 	bodyGyro.Parent = movePart
 
-	local noclipConnection
-	noclipConnection = RunService.Stepped:Connect(function()
+	local noclipConnection = RunService.Stepped:Connect(function()
 		if not isRunning then return end
-		
-		if movePart and movePart.Parent then
-			floatPart.CFrame = movePart.CFrame * CFrame.new(0, -3.5, 0)
-		end
-
+		if movePart and movePart.Parent then floatPart.CFrame = movePart.CFrame * CFrame.new(0, -3.5, 0) end
 		if player.Character then
 			for _, part in ipairs(player.Character:GetDescendants()) do
-				if part:IsA("BasePart") and part ~= floatPart then
-					part.CanCollide = false
-				end
+				if part:IsA("BasePart") and part ~= floatPart then part.CanCollide = false end
 			end
 		end
-
 		if vehicleModel then
 			for _, part in ipairs(vehicleModel:GetDescendants()) do
-				if part:IsA("BasePart") and part ~= floatPart then
-					part.CanCollide = false
-				end
+				if part:IsA("BasePart") and part ~= floatPart then part.CanCollide = false end
 			end
 		end
 	end)
 
 	local targetPosWithHeight = Vector3.new(targetPos.X, targetPos.Y + CONFIG.Height, targetPos.Z)
 	local arrived = false
-	local lastDistance = math.huge
-	local lastPosForAntiCheat = movePart.Position
+	local rubberbandDetected = false
+	local previousPos = movePart.Position
 
-	local renderConnection
-	renderConnection = RunService.Heartbeat:Connect(function()
-		if not isRunning or not movePart or not movePart.Parent then
-			arrived = false
-			if renderConnection then renderConnection:Disconnect() end
-			return
-		end
+	local renderConnection = RunService.Heartbeat:Connect(function()
+		if not isRunning or not movePart or not movePart.Parent then arrived = false return end
 
 		local currentPos = movePart.Position
-		
-		if (currentPos - lastPosForAntiCheat).Magnitude > 150 then
-			targetPosWithHeight = Vector3.new(targetPos.X, targetPos.Y + CONFIG.Height, targetPos.Z)
-		end
-		lastPosForAntiCheat = currentPos
+		local moveDelta = (currentPos - previousPos).Magnitude
+		local distToTarget = (targetPosWithHeight - currentPos).Magnitude
 
-		local direction = (targetPosWithHeight - currentPos)
-		local distance = direction.Magnitude
-
-		if distance <= 12 or (distance > lastDistance and distance < 25) then
-			arrived = true
-			if renderConnection then renderConnection:Disconnect() end
+		if moveDelta > 30 and distToTarget > 12 then
+			rubberbandDetected = true
+			bodyVel.Velocity = Vector3.zero
 			return
 		end
-		lastDistance = distance
-
-		local speedFactor = math.clamp(distance / 35, 0.2, 1)
-		local currentSpeed = CONFIG.Speed * speedFactor
 		
-		local vel = direction.Unit * currentSpeed
-		bodyVel.Velocity = vel
+		previousPos = currentPos
+
+		if distToTarget <= 8 then
+			arrived = true
+			return
+		end
+
+		local speedFactor = math.clamp(distToTarget / 25, 0.3, 1)
+		local currentSpeed = CONFIG.Speed * speedFactor
+		local direction = (targetPosWithHeight - currentPos)
+		
+		bodyVel.Velocity = direction.Unit * currentSpeed
 		bodyGyro.CFrame = CFrame.lookAt(currentPos, Vector3.new(targetPosWithHeight.X, currentPos.Y, targetPosWithHeight.Z))
 	end)
 
-	while isRunning and not arrived do
+	while isRunning and not arrived and not rubberbandDetected do
 		task.wait(0.01)
 	end
 
 	if noclipConnection then noclipConnection:Disconnect() end
 	if renderConnection then renderConnection:Disconnect() end
-	
 	bodyVel:Destroy()
 	bodyGyro:Destroy()
 	floatPart:Destroy()
 
-	movePart.AssemblyLinearVelocity = Vector3.zero
-	movePart.AssemblyAngularVelocity = Vector3.zero
-
-	if player.Character then
-		for _, part in ipairs(player.Character:GetDescendants()) do
-			if part:IsA("BasePart") then
-				part.CanCollide = true
-			end
-		end
+	if movePart and movePart.Parent then
+		movePart.AssemblyLinearVelocity = Vector3.zero
+		movePart.AssemblyAngularVelocity = Vector3.zero
 	end
 
-	if vehicleModel then
-		for _, part in ipairs(vehicleModel:GetDescendants()) do
-			if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
-				part.CanCollide = true
-			end
-		end
-	end
-
-	return arrived
+	return arrived, rubberbandDetected
 end
 
 local function moveToTargetVelocity(targetPart)
 	if not targetPart then return false end
-	return moveToPositionVelocity(targetPart.Position)
+	local arrived, rubberband = moveToPositionVelocity(targetPart.Position)
+	return arrived
 end
 
---------------------------------------------------------------------
--- 🌸 2. TWEEN NORMAL SYSTEM
---------------------------------------------------------------------
 local function tweenToInteract(targetPart)
 	local char = player.Character
 	if not char then return false end
-
 	local humanoid = char:FindFirstChildOfClass("Humanoid")
 	local hrp = char:FindFirstChild("HumanoidRootPart")
 	if not hrp or not humanoid then return false end
@@ -661,53 +572,30 @@ local function tweenToInteract(targetPart)
 	local groundTargetCFrame = targetPart.CFrame + Vector3.new(0, 3, 0)
 
 	if seat and vehicleModel then
-		local rootPart = vehicleModel.PrimaryPart or seat
-		local distance = (rootPart.Position - targetPart.Position).Magnitude
-		local duration = math.clamp(distance / 80, 0.15, 0.8)
-
+		local duration = math.clamp((vehicleModel.PrimaryPart.Position - targetPart.Position).Magnitude / 80, 0.15, 0.8)
 		local cframeValue = Instance.new("CFrameValue")
 		cframeValue.Value = vehicleModel:GetPivot()
 
-		local tweenInfo = TweenInfo.new(duration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-		local tween = TweenService:Create(cframeValue, tweenInfo, {Value = groundTargetCFrame})
-
-		local connection = cframeValue.Changed:Connect(function(newCFrame)
-			if vehicleModel and vehicleModel.Parent then
-				vehicleModel:PivotTo(newCFrame)
-			end
+		local tween = TweenService:Create(cframeValue, TweenInfo.new(duration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Value = groundTargetCFrame})
+		local conn = cframeValue.Changed:Connect(function(newCFrame)
+			if vehicleModel and vehicleModel.Parent then vehicleModel:PivotTo(newCFrame) end
 		end)
 
 		tween:Play()
-		
-		local elapsed = 0
-		while elapsed < duration and tween.PlaybackState == Enum.PlaybackState.Playing do
-			elapsed = elapsed + RunService.Heartbeat:Wait()
-		end
-		
-		connection:Disconnect()
+		task.wait(duration)
+		conn:Disconnect()
 		cframeValue:Destroy()
 
-		if CONFIG.TweenDelay > 0 then
-			task.wait(CONFIG.TweenDelay)
-		end
+		if CONFIG.TweenDelay > 0 then task.wait(CONFIG.TweenDelay) end
 		dismountVehicle()
 		return true
 	else
-		local distance = (hrp.Position - targetPart.Position).Magnitude
-		local duration = math.clamp(distance / 80, 0.15, 0.8)
-
-		local tweenInfo = TweenInfo.new(duration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-		local tween = TweenService:Create(hrp, tweenInfo, {CFrame = groundTargetCFrame})
-
+		local duration = math.clamp((hrp.Position - targetPart.Position).Magnitude / 80, 0.15, 0.8)
+		local tween = TweenService:Create(hrp, TweenInfo.new(duration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {CFrame = groundTargetCFrame})
 		tween:Play()
-		local elapsed = 0
-		while elapsed < duration and tween.PlaybackState == Enum.PlaybackState.Playing do
-			elapsed = elapsed + RunService.Heartbeat:Wait()
-		end
+		task.wait(duration)
 
-		if CONFIG.TweenDelay > 0 then
-			task.wait(CONFIG.TweenDelay)
-		end
+		if CONFIG.TweenDelay > 0 then task.wait(CONFIG.TweenDelay) end
 		return true
 	end
 end
@@ -715,136 +603,132 @@ end
 local function goToTarget(targetPart)
 	local reached = moveToTargetVelocity(targetPart)
 	if not reached or not isRunning then return false end
-
 	return tweenToInteract(targetPart)
 end
 
 local function processWaypoints(waypoints, labelPrefix)
-	for i, pos in ipairs(waypoints) do
-		if not isRunning then break end
-		statusLabel.Text = string.format("Status: %s (%d/%d)...", labelPrefix, i, #waypoints)
+	local currentIndex = 1
+
+	while isRunning and currentIndex <= #waypoints do
+		if currentIndex == 1 then getInVehicle() end
 		
-		if i == 1 then
-			getInVehicle()
+		drawForwardPath(waypoints, currentIndex)
+		
+		local targetPos = waypoints[currentIndex]
+		local arrived, rubberbandDetected = moveToPositionVelocity(targetPos)
+
+		if rubberbandDetected then
+			task.wait(0.5)
+
+			local char = player.Character
+			local hrp = char and char:FindFirstChild("HumanoidRootPart")
+			
+			if hrp then
+				local nearestIdx = getNearestWaypointIndex(waypoints, hrp.Position)
+				currentIndex = nearestIdx
+				
+				local safeTargetPos = waypoints[nearestIdx] + Vector3.new(0, CONFIG.Height, 0)
+				local movePart = hrp
+				
+				local humanoid = char:FindFirstChildOfClass("Humanoid")
+				if humanoid and humanoid.SeatPart then
+					local vModel = getVehicleModel(humanoid.SeatPart)
+					if vModel then movePart = vModel.PrimaryPart or humanoid.SeatPart end
+				end
+
+				local recoverTween = TweenService:Create(movePart, TweenInfo.new(0.6, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {CFrame = CFrame.new(safeTargetPos)})
+				recoverTween:Play()
+				recoverTween.Completed:Wait()
+				task.wait(0.2)
+			end
+		elseif arrived then
+			currentIndex = currentIndex + 1
 		end
-		
-		moveToPositionVelocity(pos)
 	end
+	clearWaylines()
 end
 
 local function interactWith(targetPart, prompt)
 	local activePrompt = prompt or targetPart:FindFirstChildOfClass("ProximityPrompt") or targetPart.Parent:FindFirstChildOfClass("ProximityPrompt") or targetPart:FindFirstChildWhichIsA("ProximityPrompt", true)
-	
 	if activePrompt then
-		if fireproximityprompt then
-			fireproximityprompt(activePrompt)
-		else
-			activePrompt:InputHoldBegin()
-			task.wait(0.05)
-			activePrompt:InputHoldEnd()
-		end
+		if fireproximityprompt then fireproximityprompt(activePrompt)
+		else activePrompt:InputHoldBegin() task.wait(0.05) activePrompt:InputHoldEnd() end
 		return
 	end
-
 	local clickDetector = targetPart:FindFirstChildOfClass("ClickDetector") or targetPart.Parent:FindFirstChildOfClass("ClickDetector") or targetPart:FindFirstChildWhichIsA("ClickDetector", true)
-	if clickDetector and fireclickdetector then
-		fireclickdetector(clickDetector)
-	end
+	if clickDetector and fireclickdetector then fireclickdetector(clickDetector) end
 end
 
 local function getProcessableItemCount()
 	local count = 0
-
 	if player:FindFirstChild("Backpack") then
 		for _, item in ipairs(player.Backpack:GetChildren()) do
-			if item:IsA("Tool") and not isProtectedItem(item.Name) then
-				count = count + 1
-			end
+			if item:IsA("Tool") and not isProtectedItem(item.Name) then count = count + 1 end
 		end
 	end
-	
 	local char = player.Character
 	if char then
 		for _, item in ipairs(char:GetChildren()) do
-			if item:IsA("Tool") and not isProtectedItem(item.Name) then
-				count = count + 1
-			end
+			if item:IsA("Tool") and not isProtectedItem(item.Name) then count = count + 1 end
 		end
 	end
-
 	return count
 end
 
 local function getItemCount(itemName)
 	local count = 0
 	local key = string.lower(itemName)
-
 	if player:FindFirstChild("Backpack") then
 		for _, item in ipairs(player.Backpack:GetChildren()) do
 			if string.find(string.lower(item.Name), key) then count = count + 1 end
 		end
 	end
-	
 	local char = player.Character
 	if char then
 		for _, item in ipairs(char:GetChildren()) do
-			if item:IsA("Tool") and string.find(string.lower(item.Name), key) then count = count + 1 end
+			if string.find(string.lower(item.Name), key) then count = count + 1 end
 		end
 	end
-
 	return count
 end
 
--- 3. Main Auto Farm Loop
+--------------------------------------------------------------------
+-- 🔄 MAIN LOOP
+--------------------------------------------------------------------
 local function mainLoop()
 	local savedBuyPart, savedBuyPrompt = nil, nil
 
 	while isRunning do
 		if getItemCount(CONFIG.ItemName) < CONFIG.Amount then
-			if not savedBuyPart then
-				savedBuyPart, savedBuyPrompt = findTarget(CONFIG.ItemName)
-			end
-
+			if not savedBuyPart then savedBuyPart, savedBuyPrompt = findTarget(CONFIG.ItemName) end
 			if savedBuyPart then
-				statusLabel.Text = "Status: Traveling to Shop..."
 				getInVehicle()
 
 				if goToTarget(savedBuyPart) then
 					while isRunning and getItemCount(CONFIG.ItemName) < CONFIG.Amount do
-						local currentCount = getItemCount(CONFIG.ItemName)
-						statusLabel.Text = string.format("Status: Buying (%d/%d)", currentCount, CONFIG.Amount)
 						interactWith(savedBuyPart, savedBuyPrompt)
 						task.wait(0.2)
 					end
 					getInVehicle()
 				end
 			else
-				statusLabel.Text = "Status: Searching Shop Target..."
 				task.wait(1)
 			end
 		end
 
 		if not isRunning then break end
-
 		processWaypoints(postBuyWaypoints, "Post-Buy Route")
-
 		if not isRunning then break end
 
 		if autoSell and getItemCount(CONFIG.ItemName) > 0 then
 			local lastBuyPos = postBuyWaypoints[#postBuyWaypoints]
-			statusLabel.Text = "Status: Selling Goods..."
-			
 			local sellPart, sellPrompt = findNearestTargetToPos(CONFIG.SellName, lastBuyPos)
-			if not sellPart then
-				sellPart, sellPrompt = findNearestTargetToPos("Smuggle", lastBuyPos)
-			end
+			if not sellPart then sellPart, sellPrompt = findNearestTargetToPos("Smuggle", lastBuyPos) end
 
 			if sellPart then
 				if goToTarget(sellPart) then
 					local attempts = 0
 					while isRunning and getItemCount(CONFIG.ItemName) > 0 and attempts < 25 do
-						local currentCount = getItemCount(CONFIG.ItemName)
-						statusLabel.Text = string.format("Status: Selling Items (%d Left)...", currentCount)
 						interactWith(sellPart, sellPrompt)
 						task.wait(0.2)
 						attempts = attempts + 1
@@ -852,19 +736,15 @@ local function mainLoop()
 					getInVehicle()
 				end
 			else
-				statusLabel.Text = "Status: Searching Seller..."
 				task.wait(1)
 			end
 		end
 
 		if not isRunning then break end
-
 		processWaypoints(postSellWaypoints, "Post-Sell Route")
-
 		if not isRunning then break end
 
 		if autoLaunder then
-			statusLabel.Text = "Status: Traveling to Launder..."
 			getInVehicle()
 
 			local launderPart, launderPrompt = findTarget(CONFIG.LaunderName)
@@ -872,38 +752,159 @@ local function mainLoop()
 				if goToTarget(launderPart) then
 					local launderAttempts = 0
 					while isRunning and getProcessableItemCount() > 0 and launderAttempts < 40 do
-						local leftCount = getProcessableItemCount()
-						statusLabel.Text = string.format("Status: Laundering Cash (%d left)...", leftCount)
 						interactWith(launderPart, launderPrompt)
 						task.wait(0.3)
 						launderAttempts = launderAttempts + 1
 					end
-					statusLabel.Text = "Status: Laundering Completed!"
 					task.wait(0.2)
 					getInVehicle()
 				end
 			else
-				statusLabel.Text = "Status: Searching Launder Point..."
 				task.wait(1)
 			end
 		end
 		
 		task.wait(0.1)
 	end
-	statusLabel.Text = "Status: Stopped"
+	clearWaylines()
 end
 
--- Start/Stop Button Control Event with Color Animation
-startBtn.MouseButton1Click:Connect(function()
-	isRunning = not isRunning
-	if isRunning then
-		startBtn.Text = "STOP FARMING"
-		TweenService:Create(startBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(231, 76, 60)}):Play()
-		TweenService:Create(startGlow, TweenInfo.new(0.2), {Color = Color3.fromRGB(231, 76, 60)}):Play()
-		task.spawn(mainLoop)
-	else
-		startBtn.Text = "START FARMING"
-		TweenService:Create(startBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(46, 204, 113)}):Play()
-		TweenService:Create(startGlow, TweenInfo.new(0.2), {Color = Color3.fromRGB(46, 204, 113)}):Play()
-	end
-end)
+--------------------------------------------------------------------
+-- 🎛️ WINDUI ELEMENTS & CONTROLS
+--------------------------------------------------------------------
+
+-- 🟢 1. Auto Farm Toggle
+MainTab:Toggle({
+    Title = "Auto Farm",
+    Desc = "",
+    Icon = "play",
+    Type = "Checkbox",
+    Value = isRunning,
+    Callback = function(state)
+        isRunning = state
+        if isRunning then
+            task.spawn(mainLoop)
+        else
+            clearWaylines()
+        end
+    end
+})
+
+-- 🟢 2. Auto Sell Goods Toggle
+MainTab:Toggle({
+    Title = "Auto Sell Goods",
+    Desc = "",
+    Icon = "shopping-cart",
+    Type = "Checkbox",
+    Value = autoSell,
+    Callback = function(state)
+        autoSell = state
+    end
+})
+
+-- 🟢 3. Auto Launder Cash Toggle
+MainTab:Toggle({
+    Title = "Auto Launder Cash",
+    Desc = "",
+    Icon = "dollar-sign",
+    Type = "Checkbox",
+    Value = autoLaunder,
+    Callback = function(state)
+        autoLaunder = state
+    end
+})
+
+-- 🎚️ Fly Speed Slider
+MainTab:Slider({
+    Title = "Fly Speed",
+    Desc = "",
+    Step = 5,
+    Value = {
+        Min = 200,
+        Max = 300,
+        Default = CONFIG.Speed,
+    },
+    Callback = function(value)
+        CONFIG.Speed = value
+    end
+})
+
+-- 🎚️ Travel Height Slider
+MainTab:Slider({
+    Title = "Tween Height (Y)",
+    Desc = "",
+    Step = 0.1,
+    Value = {
+        Min = 1,
+        Max = 5,
+        Default = CONFIG.Height,
+    },
+    Callback = function(value)
+        CONFIG.Height = value
+    end
+})
+
+-- 🎚️ Target Amount Slider
+MainTab:Slider({
+    Title = "Target Amount",
+    Desc = "",
+    Step = 0.1,
+    Value = {
+        Min = 1,
+        Max = 5,
+        Default = CONFIG.Amount,
+    },
+    Callback = function(value)
+        CONFIG.Amount = value
+    end
+})
+
+-- 🎚️ Tween Delay Slider
+MainTab:Slider({
+    Title = "Tween Delay (s)",
+    Desc = "",
+    Step = 0.1,
+    Value = {
+        Min = 0,
+        Max = 5,
+        Default = CONFIG.TweenDelay,
+    },
+    Callback = function(value)
+        CONFIG.TweenDelay = value
+    end
+})
+
+-- Inputs ตั้งค่าส่วนอื่นๆ
+MainTab:Input({
+    Title = "Item Name",
+    Desc = "",
+    Value = CONFIG.ItemName,
+    Placeholder = "Fake Diamond Ring",
+    Callback = function(text)
+        CONFIG.ItemName = text
+    end
+})
+
+-- 🟢 4. Boost FPS Toggle (อยู่ใน Tab Misc)
+MiscTab:Toggle({
+    Title = "Boost FPS",
+    Desc = "",
+    Icon = "zap",
+    Type = "Checkbox",
+    Value = fpsBoostActive,
+    Callback = function(state)
+        applyFPSBoost(state)
+    end
+})
+
+-- 🟢 5. Anti Gameplay Paused Toggle (อยู่ใน Tab Misc)
+MiscTab:Toggle({
+    Title = "Anti Gameplay Paused",
+    Desc = "",
+    Icon = "shield-alert",
+    Type = "Checkbox",
+    Value = antiPauseActive,
+    Callback = function(state)
+        applyAntiPause(state)
+    end
+})
