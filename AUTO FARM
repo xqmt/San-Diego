@@ -1,0 +1,895 @@
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+
+local player = Players.LocalPlayer
+
+-- Global State & Settings
+local isRunning = false
+local autoSell = true
+local autoLaunder = true
+local lastVehicle = nil
+
+local CONFIG = {
+	Speed = 300,
+	Height = 2.5,
+	Amount = 5,
+	TweenDelay = 0, 
+	ItemName = "Fake Diamond Ring",
+	SellName = "Smuggle Goods Seller",
+	LaunderName = "Launder Cash"
+}
+
+local PROTECTED_ITEMS = {
+	["fists"] = true,
+	["passport"] = true
+}
+
+local function isProtectedItem(itemName)
+	return PROTECTED_ITEMS[string.lower(itemName)] == true
+end
+
+local postBuyWaypoints = {
+	Vector3.new(6837.8, 17.2, 30.7),
+	Vector3.new(6843.8, 17.2, 101.4),
+	Vector3.new(2785.6, 17.2, 94.8),
+	Vector3.new(2669.2, 17.2, 111.6),
+	Vector3.new(97.4, 17.2, 112.9),
+	Vector3.new(54.6, 17.2, 341.1),
+	Vector3.new(-124.1, 17.2, 394.1),
+	Vector3.new(-101.3, 17.2, 505.4),
+	Vector3.new(13.0, 17.2, 494.9),
+	Vector3.new(44.5, 17.2, 431.0),
+	Vector3.new(47.6, 33.3, 563.5),
+	Vector3.new(29.3, 33.3, 424.0),
+	Vector3.new(42.9, 49.3, 561.7),
+	Vector3.new(-80.5, 49.3, 428.5)
+}
+
+local postSellWaypoints = {
+	Vector3.new(-24.6, 53.5, 405.4),
+	Vector3.new(23.4, 17.2, 348.7),
+	Vector3.new(169.1, 17.2, 148.7),
+	Vector3.new(2848.5, 17.2, 159.6),
+	Vector3.new(6867.7, 17.2, 133.0),
+	Vector3.new(6832.1, 17.4, -41.5),
+	Vector3.new(6805.6, 17.4, -34.4)
+}
+
+-- 1. Create Main GUI Structure (Ultra Clean Modern Minimalist + Glow Effects)
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "SanDiegoAutoFarmGUI_V3"
+screenGui.ResetOnSpawn = false
+
+local successCore, _ = pcall(function()
+	screenGui.Parent = game:GetService("CoreGui")
+end)
+if not successCore then
+	screenGui.Parent = player:WaitForChild("PlayerGui")
+end
+
+-- Main Window Frame
+local mainFrame = Instance.new("Frame")
+mainFrame.Size = UDim2.new(0, 440, 0, 480)
+mainFrame.Position = UDim2.new(0.5, -220, 0.25, 0)
+mainFrame.BackgroundColor3 = Color3.fromRGB(15, 17, 23)
+mainFrame.BorderSizePixel = 0
+mainFrame.Active = true
+mainFrame.ClipsDescendants = false
+mainFrame.Parent = screenGui
+
+local uiCornerMain = Instance.new("UICorner")
+uiCornerMain.CornerRadius = UDim.new(0, 14)
+uiCornerMain.Parent = mainFrame
+
+-- Subtle Outer Glow Effect
+local glowEffect = Instance.new("UIStroke")
+glowEffect.Color = Color3.fromRGB(52, 152, 219)
+glowEffect.Transparency = 0.6
+glowEffect.Thickness = 1.5
+glowEffect.Parent = mainFrame
+
+-- Subtle Inner Shadow / Frame Accent
+local mainStroke = Instance.new("UIStroke")
+mainStroke.Color = Color3.fromRGB(40, 44, 58)
+mainStroke.Transparency = 0.3
+mainStroke.Thickness = 1
+mainStroke.Parent = mainFrame
+
+-- Title Bar
+local titleBar = Instance.new("Frame")
+titleBar.Size = UDim2.new(1, 0, 0, 50)
+titleBar.BackgroundTransparency = 1
+titleBar.BorderSizePixel = 0
+titleBar.Parent = mainFrame
+
+local titleLabel = Instance.new("TextLabel")
+titleLabel.Size = UDim2.new(1, -60, 1, 0)
+titleLabel.Position = UDim2.new(0, 18, 0, 0)
+titleLabel.BackgroundTransparency = 1
+titleLabel.Text = "🌴 SAN DIEGO AUTO FARM"
+titleLabel.TextColor3 = Color3.fromRGB(245, 246, 250)
+titleLabel.TextSize = 15
+titleLabel.Font = Enum.Font.GothamBold
+titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+titleLabel.Parent = titleBar
+
+local titleAccent = Instance.new("Frame")
+titleAccent.Size = UDim2.new(0, 4, 0, 16)
+titleAccent.Position = UDim2.new(0, 0, 0.5, -8)
+titleAccent.BackgroundColor3 = Color3.fromRGB(52, 152, 219)
+titleAccent.BorderSizePixel = 0
+titleAccent.Parent = titleBar
+
+local accentCorner = Instance.new("UICorner")
+accentCorner.CornerRadius = UDim.new(1, 0)
+accentCorner.Parent = titleAccent
+
+-- Minimize Button (Minimal Style)
+local minBtn = Instance.new("TextButton")
+minBtn.Size = UDim2.new(0, 28, 0, 28)
+minBtn.Position = UDim2.new(1, -38, 0, 11)
+minBtn.BackgroundColor3 = Color3.fromRGB(25, 28, 38)
+minBtn.Text = "—"
+minBtn.TextColor3 = Color3.fromRGB(180, 185, 200)
+minBtn.TextSize = 12
+minBtn.Font = Enum.Font.GothamBold
+minBtn.Parent = titleBar
+
+local minCorner = Instance.new("UICorner")
+minCorner.CornerRadius = UDim.new(0, 8)
+minCorner.Parent = minBtn
+
+local minStroke = Instance.new("UIStroke")
+minStroke.Color = Color3.fromRGB(45, 50, 65)
+minStroke.Transparency = 0.5
+minStroke.Thickness = 1
+minStroke.Parent = minBtn
+
+-- Content Container
+local contentContainer = Instance.new("ScrollingFrame")
+contentContainer.Size = UDim2.new(1, -28, 1, -65)
+contentContainer.Position = UDim2.new(0, 14, 0, 55)
+contentContainer.BackgroundTransparency = 1
+contentContainer.BorderSizePixel = 0
+contentContainer.CanvasSize = UDim2.new(0, 0, 0, 410)
+contentContainer.ScrollBarThickness = 2
+contentContainer.ScrollBarImageColor3 = Color3.fromRGB(52, 152, 219)
+contentContainer.Parent = mainFrame
+
+-- Window Dragging
+local dragging, dragInput, dragStart, startPos
+titleBar.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		dragging = true
+		dragStart = input.Position
+		startPos = mainFrame.Position
+		input.Changed:Connect(function()
+			if input.UserInputState == Enum.UserInputState.End then
+				dragging = false
+			end
+		end)
+	end
+end)
+
+titleBar.InputChanged:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+		dragInput = input
+	end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+	if input == dragInput and dragging then
+		local delta = input.Position - dragStart
+		mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+	end
+end)
+
+-- UI Builder Elements (Minimalist Floating Input & Toggles with Hover/Focus Glow Effects)
+local function createInputRow(parent, labelText, defaultVal, yPos, callback)
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.new(0.5, 0, 0, 34)
+	label.Position = UDim2.new(0, 0, 0, yPos)
+	label.BackgroundTransparency = 1
+	label.Text = labelText
+	label.TextColor3 = Color3.fromRGB(160, 165, 180)
+	label.TextSize = 12
+	label.Font = Enum.Font.GothamMedium
+	label.TextXAlignment = Enum.TextXAlignment.Left
+	label.Parent = parent
+
+	local boxWrapper = Instance.new("Frame")
+	boxWrapper.Size = UDim2.new(0.46, 0, 0, 34)
+	boxWrapper.Position = UDim2.new(0.54, 0, 0, yPos)
+	boxWrapper.BackgroundColor3 = Color3.fromRGB(22, 25, 35)
+	boxWrapper.BorderSizePixel = 0
+	boxWrapper.Parent = parent
+
+	local boxCorner = Instance.new("UICorner")
+	boxCorner.CornerRadius = UDim.new(0, 8)
+	boxCorner.Parent = boxWrapper
+
+	local boxStroke = Instance.new("UIStroke")
+	boxStroke.Color = Color3.fromRGB(40, 45, 60)
+	boxStroke.Transparency = 0.5
+	boxStroke.Thickness = 1
+	boxStroke.Parent = boxWrapper
+
+	local box = Instance.new("TextBox")
+	box.Size = UDim2.new(1, -16, 1, 0)
+	box.Position = UDim2.new(0, 8, 0, 0)
+	box.BackgroundTransparency = 1
+	box.Text = tostring(defaultVal)
+	box.TextColor3 = Color3.fromRGB(240, 242, 245)
+	box.TextSize = 12
+	box.Font = Enum.Font.Gotham
+	box.TextXAlignment = Enum.TextXAlignment.Right
+	box.ClearTextOnFocus = false
+	box.Parent = boxWrapper
+
+	box.Focused:Connect(function()
+		TweenService:Create(boxStroke, TweenInfo.new(0.2), {Color = Color3.fromRGB(52, 152, 219), Transparency = 0}):Play()
+	end)
+	box.FocusLost:Connect(function(enterPressed)
+		TweenService:Create(boxStroke, TweenInfo.new(0.2), {Color = Color3.fromRGB(40, 45, 60), Transparency = 0.5}):Play()
+		callback(box.Text)
+	end)
+end
+
+local function createToggleRow(parent, labelText, defaultState, yPos, callback)
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.new(0.6, 0, 0, 34)
+	label.Position = UDim2.new(0, 0, 0, yPos)
+	label.BackgroundTransparency = 1
+	label.Text = labelText
+	label.TextColor3 = Color3.fromRGB(160, 165, 180)
+	label.TextSize = 12
+	label.Font = Enum.Font.GothamMedium
+	label.TextXAlignment = Enum.TextXAlignment.Left
+	label.Parent = parent
+
+	local toggleBtn = Instance.new("TextButton")
+	toggleBtn.Size = UDim2.new(0, 52, 0, 26)
+	toggleBtn.Position = UDim2.new(1, -52, 0, yPos + 4)
+	toggleBtn.BackgroundColor3 = defaultState and Color3.fromRGB(46, 204, 113) or Color3.fromRGB(35, 39, 52)
+	toggleBtn.Text = ""
+	toggleBtn.AutoButtonColor = false
+	toggleBtn.Parent = parent
+
+	local toggleCorner = Instance.new("UICorner")
+	toggleCorner.CornerRadius = UDim.new(1, 0)
+	toggleCorner.Parent = toggleBtn
+
+	local toggleStroke = Instance.new("UIStroke")
+	toggleStroke.Color = defaultState and Color3.fromRGB(46, 204, 113) or Color3.fromRGB(55, 60, 75)
+	toggleStroke.Transparency = 0.3
+	toggleStroke.Thickness = 1
+	toggleStroke.Parent = toggleBtn
+
+	local circle = Instance.new("Frame")
+	circle.Size = UDim2.new(0, 18, 0, 18)
+	circle.Position = defaultState and UDim2.new(1, -22, 0.5, -9) or UDim2.new(0, 4, 0.5, -9)
+	circle.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	circle.BorderSizePixel = 0
+	circle.Parent = toggleBtn
+
+	local circleCorner = Instance.new("UICorner")
+	circleCorner.CornerRadius = UDim.new(1, 0)
+	circleCorner.Parent = circle
+
+	local state = defaultState
+	toggleBtn.MouseButton1Click:Connect(function()
+		state = not state
+		
+		local targetColor = state and Color3.fromRGB(46, 204, 113) or Color3.fromRGB(35, 39, 52)
+		local targetPos = state and UDim2.new(1, -22, 0.5, -9) or UDim2.new(0, 4, 0.5, -9)
+
+		TweenService:Create(toggleBtn, TweenInfo.new(0.2, Enum.EasingStyle.Quart), {BackgroundColor3 = targetColor}):Play()
+		TweenService:Create(circle, TweenInfo.new(0.2, Enum.EasingStyle.Quart), {Position = targetPos}):Play()
+		TweenService:Create(toggleStroke, TweenInfo.new(0.2), {Color = targetColor}):Play()
+
+		callback(state)
+	end)
+end
+
+-- Render Configuration Rows
+createInputRow(contentContainer, "Fly Speed", CONFIG.Speed, 0, function(txt) CONFIG.Speed = tonumber(txt) or CONFIG.Speed end)
+createInputRow(contentContainer, "Travel Height (Y)", CONFIG.Height, 42, function(txt) CONFIG.Height = tonumber(txt) or CONFIG.Height end)
+createInputRow(contentContainer, "Target Amount", CONFIG.Amount, 84, function(txt) CONFIG.Amount = tonumber(txt) or CONFIG.Amount end)
+createInputRow(contentContainer, "Item Name", CONFIG.ItemName, 126, function(txt) CONFIG.ItemName = txt end)
+createInputRow(contentContainer, "Tween Delay (s)", CONFIG.TweenDelay, 168, function(txt) CONFIG.TweenDelay = tonumber(txt) or CONFIG.TweenDelay end)
+
+createToggleRow(contentContainer, "Auto Sell Goods", autoSell, 215, function(state) autoSell = state end)
+createToggleRow(contentContainer, "Auto Launder Cash", autoLaunder, 257, function(state) autoLaunder = state end)
+
+-- Minimal Status Banner Box
+local statusWrapper = Instance.new("Frame")
+statusWrapper.Size = UDim2.new(1, 0, 0, 36)
+statusWrapper.Position = UDim2.new(0, 0, 0, 308)
+statusWrapper.BackgroundColor3 = Color3.fromRGB(20, 23, 32)
+statusWrapper.BorderSizePixel = 0
+statusWrapper.Parent = contentContainer
+
+local statusCorner = Instance.new("UICorner")
+statusCorner.CornerRadius = UDim.new(0, 8)
+statusCorner.Parent = statusWrapper
+
+local statusStroke = Instance.new("UIStroke")
+statusStroke.Color = Color3.fromRGB(35, 40, 55)
+statusStroke.Transparency = 0.5
+statusStroke.Thickness = 1
+statusStroke.Parent = statusWrapper
+
+local statusLabel = Instance.new("TextLabel")
+statusLabel.Size = UDim2.new(1, -20, 1, 0)
+statusLabel.Position = UDim2.new(0, 10, 0, 0)
+statusLabel.BackgroundTransparency = 1
+statusLabel.Text = "Status: Idle"
+statusLabel.TextColor3 = Color3.fromRGB(140, 145, 165)
+statusLabel.TextSize = 11
+statusLabel.Font = Enum.Font.GothamMedium
+statusLabel.TextXAlignment = Enum.TextXAlignment.Left
+statusLabel.Parent = statusWrapper
+
+-- Start / Stop Action Button (Sleek Gradient & Glow)
+local startBtn = Instance.new("TextButton")
+startBtn.Size = UDim2.new(1, 0, 0, 42)
+startBtn.Position = UDim2.new(0, 0, 0, 356)
+startBtn.BackgroundColor3 = Color3.fromRGB(46, 204, 113)
+startBtn.Text = "START FARMING"
+startBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+startBtn.TextSize = 13
+startBtn.Font = Enum.Font.GothamBold
+startBtn.AutoButtonColor = false
+startBtn.Parent = contentContainer
+
+local startCorner = Instance.new("UICorner")
+startCorner.CornerRadius = UDim.new(0, 8)
+startCorner.Parent = startBtn
+
+local startGlow = Instance.new("UIStroke")
+startGlow.Color = Color3.fromRGB(46, 204, 113)
+startGlow.Transparency = 0.4
+startGlow.Thickness = 1.5
+startGlow.Parent = startBtn
+
+-- Minimize Functionality with Tweening
+local isMinimized = false
+minBtn.MouseButton1Click:Connect(function()
+	isMinimized = not isMinimized
+	if isMinimized then
+		mainFrame:TweenSize(UDim2.new(0, 440, 0, 50), Enum.EasingDirection.Out, Enum.EasingStyle.Quart, 0.3, true)
+		minBtn.Text = "+"
+		contentContainer.Visible = false
+	else
+		mainFrame:TweenSize(UDim2.new(0, 440, 0, 480), Enum.EasingDirection.Out, Enum.EasingStyle.Quart, 0.3, true)
+		minBtn.Text = "—"
+		contentContainer.Visible = true
+	end
+end)
+
+-- 2. Game Interaction Core Functions
+local function findTarget(keyword)
+	local key = string.lower(keyword)
+
+	for _, prompt in ipairs(workspace:GetDescendants()) do
+		if prompt:IsA("ProximityPrompt") then
+			local objText = string.lower(prompt.ObjectText or "")
+			local actText = string.lower(prompt.ActionText or "")
+			local parentName = string.lower(prompt.Parent and prompt.Parent.Name or "")
+			
+			if string.find(objText, key) or string.find(actText, key) or string.find(parentName, key) then
+				local targetPart = prompt:FindFirstAncestorWhichIsA("BasePart") or prompt.Parent
+				if targetPart:IsA("BasePart") then
+					return targetPart, prompt
+				elseif targetPart:IsA("Model") then
+					local part = targetPart.PrimaryPart or targetPart:FindFirstChildWhichIsA("BasePart", true)
+					if part then return part, prompt end
+				end
+			end
+		end
+	end
+
+	for _, obj in ipairs(workspace:GetDescendants()) do
+		if string.find(string.lower(obj.Name), key) then
+			if obj:IsA("BasePart") then
+				return obj, obj:FindFirstChildOfClass("ProximityPrompt")
+			elseif obj:IsA("Model") then
+				local part = obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart", true)
+				if part then return part, obj:FindFirstChildWhichIsA("ProximityPrompt", true) end
+			end
+		end
+	end
+
+	return nil, nil
+end
+
+local function findNearestTargetToPos(keyword, pos)
+	local key = string.lower(keyword)
+	local nearestPart = nil
+	local nearestPrompt = nil
+	local minDistance = math.huge
+
+	local function checkAndAdd(part, prompt)
+		if part and part:IsA("BasePart") then
+			local dist = (pos - part.Position).Magnitude
+			if dist < minDistance then
+				minDistance = dist
+				nearestPart = part
+				nearestPrompt = prompt
+			end
+		end
+	end
+
+	for _, prompt in ipairs(workspace:GetDescendants()) do
+		if prompt:IsA("ProximityPrompt") then
+			local objText = string.lower(prompt.ObjectText or "")
+			local actText = string.lower(prompt.ActionText or "")
+			local parentName = string.lower(prompt.Parent and prompt.Parent.Name or "")
+			
+			if string.find(objText, key) or string.find(actText, key) or string.find(parentName, key) then
+				local targetPart = prompt:FindFirstAncestorWhichIsA("BasePart") or prompt.Parent
+				if targetPart:IsA("BasePart") then
+					checkAndAdd(targetPart, prompt)
+				elseif targetPart:IsA("Model") then
+					local part = targetPart.PrimaryPart or targetPart:FindFirstChildWhichIsA("BasePart", true)
+					checkAndAdd(part, prompt)
+				end
+			end
+		end
+	end
+
+	if not nearestPart then
+		for _, obj in ipairs(workspace:GetDescendants()) do
+			if string.find(string.lower(obj.Name), key) then
+				if obj:IsA("BasePart") then
+					checkAndAdd(obj, obj:FindFirstChildOfClass("ProximityPrompt"))
+				elseif obj:IsA("Model") then
+					local part = obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart", true)
+					checkAndAdd(part, obj:FindFirstChildWhichIsA("ProximityPrompt", true))
+				end
+			end
+		end
+	end
+
+	return nearestPart, nearestPrompt
+end
+
+local function getVehicleModel(seat)
+	if not seat then return nil end
+	local current = seat
+	local vehicleModel = nil
+	while current and current ~= workspace do
+		if current:IsA("Model") then vehicleModel = current end
+		current = current.Parent
+	end
+	return vehicleModel
+end
+
+local function dismountVehicle()
+	local char = player.Character
+	if not char then return end
+	local humanoid = char:FindFirstChildOfClass("Humanoid")
+	if humanoid and humanoid.SeatPart then
+		lastVehicle = getVehicleModel(humanoid.SeatPart)
+		humanoid.Sit = false
+		task.wait(0.1)
+	end
+end
+
+local function getInVehicle()
+	if not lastVehicle or not lastVehicle.Parent then return end
+	local char = player.Character
+	if not char then return end
+	local humanoid = char:FindFirstChildOfClass("Humanoid")
+	local hrp = char:FindFirstChild("HumanoidRootPart")
+	if not hrp or not humanoid or humanoid.SeatPart then return end
+
+	local seat = lastVehicle:FindFirstChildWhichIsA("VehicleSeat", true) or lastVehicle:FindFirstChildWhichIsA("Seat", true)
+	if seat then
+		hrp.CFrame = seat.CFrame + Vector3.new(0, 2, 0)
+		task.wait(0.05)
+		seat:Sit(humanoid)
+		task.wait(0.2)
+	end
+end
+
+--------------------------------------------------------------------
+-- 🔥 1. VELOCITY SYSTEM + NOCLIP + FLOAT PLATFORM SYSTEM
+--------------------------------------------------------------------
+local function moveToPositionVelocity(targetPos)
+	local char = player.Character
+	if not char then return false end
+	
+	local humanoid = char:FindFirstChildOfClass("Humanoid")
+	local hrp = char:FindFirstChild("HumanoidRootPart")
+	if not hrp or not humanoid then return false end
+
+	local seat = humanoid.SeatPart
+	local vehicleModel = getVehicleModel(seat)
+	
+	local movePart = (seat and vehicleModel) and (vehicleModel.PrimaryPart or seat) or hrp
+	if not movePart then return false end
+
+	local floatPart = Instance.new("Part")
+	floatPart.Name = "AntiFall_FloatPlatform"
+	floatPart.Size = Vector3.new(12, 1, 12)
+	floatPart.Anchored = true
+	floatPart.CanCollide = true
+	floatPart.Transparency = 1
+	floatPart.Parent = workspace
+
+	local bodyVel = Instance.new("BodyVelocity")
+	bodyVel.MaxForce = Vector3.new(1e6, 1e6, 1e6)
+	bodyVel.Velocity = Vector3.zero
+	bodyVel.Parent = movePart
+
+	local bodyGyro = Instance.new("BodyGyro")
+	bodyGyro.MaxTorque = Vector3.new(1e6, 1e6, 1e6)
+	bodyGyro.CFrame = movePart.CFrame
+	bodyGyro.Parent = movePart
+
+	local noclipConnection
+	noclipConnection = RunService.Stepped:Connect(function()
+		if not isRunning then return end
+		
+		if movePart and movePart.Parent then
+			floatPart.CFrame = movePart.CFrame * CFrame.new(0, -3.5, 0)
+		end
+
+		if player.Character then
+			for _, part in ipairs(player.Character:GetDescendants()) do
+				if part:IsA("BasePart") and part ~= floatPart then
+					part.CanCollide = false
+				end
+			end
+		end
+
+		if vehicleModel then
+			for _, part in ipairs(vehicleModel:GetDescendants()) do
+				if part:IsA("BasePart") and part ~= floatPart then
+					part.CanCollide = false
+				end
+			end
+		end
+	end)
+
+	local targetPosWithHeight = Vector3.new(targetPos.X, targetPos.Y + CONFIG.Height, targetPos.Z)
+	local arrived = false
+	local lastDistance = math.huge
+	local lastPosForAntiCheat = movePart.Position
+
+	local renderConnection
+	renderConnection = RunService.Heartbeat:Connect(function()
+		if not isRunning or not movePart or not movePart.Parent then
+			arrived = false
+			if renderConnection then renderConnection:Disconnect() end
+			return
+		end
+
+		local currentPos = movePart.Position
+		
+		if (currentPos - lastPosForAntiCheat).Magnitude > 150 then
+			targetPosWithHeight = Vector3.new(targetPos.X, targetPos.Y + CONFIG.Height, targetPos.Z)
+		end
+		lastPosForAntiCheat = currentPos
+
+		local direction = (targetPosWithHeight - currentPos)
+		local distance = direction.Magnitude
+
+		if distance <= 12 or (distance > lastDistance and distance < 25) then
+			arrived = true
+			if renderConnection then renderConnection:Disconnect() end
+			return
+		end
+		lastDistance = distance
+
+		local speedFactor = math.clamp(distance / 35, 0.2, 1)
+		local currentSpeed = CONFIG.Speed * speedFactor
+		
+		local vel = direction.Unit * currentSpeed
+		bodyVel.Velocity = vel
+		bodyGyro.CFrame = CFrame.lookAt(currentPos, Vector3.new(targetPosWithHeight.X, currentPos.Y, targetPosWithHeight.Z))
+	end)
+
+	while isRunning and not arrived do
+		task.wait(0.01)
+	end
+
+	if noclipConnection then noclipConnection:Disconnect() end
+	if renderConnection then renderConnection:Disconnect() end
+	
+	bodyVel:Destroy()
+	bodyGyro:Destroy()
+	floatPart:Destroy()
+
+	movePart.AssemblyLinearVelocity = Vector3.zero
+	movePart.AssemblyAngularVelocity = Vector3.zero
+
+	if player.Character then
+		for _, part in ipairs(player.Character:GetDescendants()) do
+			if part:IsA("BasePart") then
+				part.CanCollide = true
+			end
+		end
+	end
+
+	if vehicleModel then
+		for _, part in ipairs(vehicleModel:GetDescendants()) do
+			if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+				part.CanCollide = true
+			end
+		end
+	end
+
+	return arrived
+end
+
+local function moveToTargetVelocity(targetPart)
+	if not targetPart then return false end
+	return moveToPositionVelocity(targetPart.Position)
+end
+
+--------------------------------------------------------------------
+-- 🌸 2. TWEEN NORMAL SYSTEM
+--------------------------------------------------------------------
+local function tweenToInteract(targetPart)
+	local char = player.Character
+	if not char then return false end
+
+	local humanoid = char:FindFirstChildOfClass("Humanoid")
+	local hrp = char:FindFirstChild("HumanoidRootPart")
+	if not hrp or not humanoid then return false end
+
+	local seat = humanoid.SeatPart
+	local vehicleModel = getVehicleModel(seat)
+	local groundTargetCFrame = targetPart.CFrame + Vector3.new(0, 3, 0)
+
+	if seat and vehicleModel then
+		local rootPart = vehicleModel.PrimaryPart or seat
+		local distance = (rootPart.Position - targetPart.Position).Magnitude
+		local duration = math.clamp(distance / 80, 0.15, 0.8)
+
+		local cframeValue = Instance.new("CFrameValue")
+		cframeValue.Value = vehicleModel:GetPivot()
+
+		local tweenInfo = TweenInfo.new(duration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+		local tween = TweenService:Create(cframeValue, tweenInfo, {Value = groundTargetCFrame})
+
+		local connection = cframeValue.Changed:Connect(function(newCFrame)
+			if vehicleModel and vehicleModel.Parent then
+				vehicleModel:PivotTo(newCFrame)
+			end
+		end)
+
+		tween:Play()
+		
+		local elapsed = 0
+		while elapsed < duration and tween.PlaybackState == Enum.PlaybackState.Playing do
+			elapsed = elapsed + RunService.Heartbeat:Wait()
+		end
+		
+		connection:Disconnect()
+		cframeValue:Destroy()
+
+		if CONFIG.TweenDelay > 0 then
+			task.wait(CONFIG.TweenDelay)
+		end
+		dismountVehicle()
+		return true
+	else
+		local distance = (hrp.Position - targetPart.Position).Magnitude
+		local duration = math.clamp(distance / 80, 0.15, 0.8)
+
+		local tweenInfo = TweenInfo.new(duration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+		local tween = TweenService:Create(hrp, tweenInfo, {CFrame = groundTargetCFrame})
+
+		tween:Play()
+		local elapsed = 0
+		while elapsed < duration and tween.PlaybackState == Enum.PlaybackState.Playing do
+			elapsed = elapsed + RunService.Heartbeat:Wait()
+		end
+
+		if CONFIG.TweenDelay > 0 then
+			task.wait(CONFIG.TweenDelay)
+		end
+		return true
+	end
+end
+
+local function goToTarget(targetPart)
+	local reached = moveToTargetVelocity(targetPart)
+	if not reached or not isRunning then return false end
+
+	return tweenToInteract(targetPart)
+end
+
+local function processWaypoints(waypoints, labelPrefix)
+	for i, pos in ipairs(waypoints) do
+		if not isRunning then break end
+		statusLabel.Text = string.format("Status: %s (%d/%d)...", labelPrefix, i, #waypoints)
+		
+		if i == 1 then
+			getInVehicle()
+		end
+		
+		moveToPositionVelocity(pos)
+	end
+end
+
+local function interactWith(targetPart, prompt)
+	local activePrompt = prompt or targetPart:FindFirstChildOfClass("ProximityPrompt") or targetPart.Parent:FindFirstChildOfClass("ProximityPrompt") or targetPart:FindFirstChildWhichIsA("ProximityPrompt", true)
+	
+	if activePrompt then
+		if fireproximityprompt then
+			fireproximityprompt(activePrompt)
+		else
+			activePrompt:InputHoldBegin()
+			task.wait(0.05)
+			activePrompt:InputHoldEnd()
+		end
+		return
+	end
+
+	local clickDetector = targetPart:FindFirstChildOfClass("ClickDetector") or targetPart.Parent:FindFirstChildOfClass("ClickDetector") or targetPart:FindFirstChildWhichIsA("ClickDetector", true)
+	if clickDetector and fireclickdetector then
+		fireclickdetector(clickDetector)
+	end
+end
+
+local function getProcessableItemCount()
+	local count = 0
+
+	if player:FindFirstChild("Backpack") then
+		for _, item in ipairs(player.Backpack:GetChildren()) do
+			if item:IsA("Tool") and not isProtectedItem(item.Name) then
+				count = count + 1
+			end
+		end
+	end
+	
+	local char = player.Character
+	if char then
+		for _, item in ipairs(char:GetChildren()) do
+			if item:IsA("Tool") and not isProtectedItem(item.Name) then
+				count = count + 1
+			end
+		end
+	end
+
+	return count
+end
+
+local function getItemCount(itemName)
+	local count = 0
+	local key = string.lower(itemName)
+
+	if player:FindFirstChild("Backpack") then
+		for _, item in ipairs(player.Backpack:GetChildren()) do
+			if string.find(string.lower(item.Name), key) then count = count + 1 end
+		end
+	end
+	
+	local char = player.Character
+	if char then
+		for _, item in ipairs(char:GetChildren()) do
+			if item:IsA("Tool") and string.find(string.lower(item.Name), key) then count = count + 1 end
+		end
+	end
+
+	return count
+end
+
+-- 3. Main Auto Farm Loop
+local function mainLoop()
+	local savedBuyPart, savedBuyPrompt = nil, nil
+
+	while isRunning do
+		if getItemCount(CONFIG.ItemName) < CONFIG.Amount then
+			if not savedBuyPart then
+				savedBuyPart, savedBuyPrompt = findTarget(CONFIG.ItemName)
+			end
+
+			if savedBuyPart then
+				statusLabel.Text = "Status: Traveling to Shop..."
+				getInVehicle()
+
+				if goToTarget(savedBuyPart) then
+					while isRunning and getItemCount(CONFIG.ItemName) < CONFIG.Amount do
+						local currentCount = getItemCount(CONFIG.ItemName)
+						statusLabel.Text = string.format("Status: Buying (%d/%d)", currentCount, CONFIG.Amount)
+						interactWith(savedBuyPart, savedBuyPrompt)
+						task.wait(0.2)
+					end
+					getInVehicle()
+				end
+			else
+				statusLabel.Text = "Status: Searching Shop Target..."
+				task.wait(1)
+			end
+		end
+
+		if not isRunning then break end
+
+		processWaypoints(postBuyWaypoints, "Post-Buy Route")
+
+		if not isRunning then break end
+
+		if autoSell and getItemCount(CONFIG.ItemName) > 0 then
+			local lastBuyPos = postBuyWaypoints[#postBuyWaypoints]
+			statusLabel.Text = "Status: Selling Goods..."
+			
+			local sellPart, sellPrompt = findNearestTargetToPos(CONFIG.SellName, lastBuyPos)
+			if not sellPart then
+				sellPart, sellPrompt = findNearestTargetToPos("Smuggle", lastBuyPos)
+			end
+
+			if sellPart then
+				if goToTarget(sellPart) then
+					local attempts = 0
+					while isRunning and getItemCount(CONFIG.ItemName) > 0 and attempts < 25 do
+						local currentCount = getItemCount(CONFIG.ItemName)
+						statusLabel.Text = string.format("Status: Selling Items (%d Left)...", currentCount)
+						interactWith(sellPart, sellPrompt)
+						task.wait(0.2)
+						attempts = attempts + 1
+					end
+					getInVehicle()
+				end
+			else
+				statusLabel.Text = "Status: Searching Seller..."
+				task.wait(1)
+			end
+		end
+
+		if not isRunning then break end
+
+		processWaypoints(postSellWaypoints, "Post-Sell Route")
+
+		if not isRunning then break end
+
+		if autoLaunder then
+			statusLabel.Text = "Status: Traveling to Launder..."
+			getInVehicle()
+
+			local launderPart, launderPrompt = findTarget(CONFIG.LaunderName)
+			if launderPart then
+				if goToTarget(launderPart) then
+					local launderAttempts = 0
+					while isRunning and getProcessableItemCount() > 0 and launderAttempts < 40 do
+						local leftCount = getProcessableItemCount()
+						statusLabel.Text = string.format("Status: Laundering Cash (%d left)...", leftCount)
+						interactWith(launderPart, launderPrompt)
+						task.wait(0.3)
+						launderAttempts = launderAttempts + 1
+					end
+					statusLabel.Text = "Status: Laundering Completed!"
+					task.wait(0.2)
+					getInVehicle()
+				end
+			else
+				statusLabel.Text = "Status: Searching Launder Point..."
+				task.wait(1)
+			end
+		end
+		
+		task.wait(0.1)
+	end
+	statusLabel.Text = "Status: Stopped"
+end
+
+-- Start/Stop Button Control Event with Color Animation
+startBtn.MouseButton1Click:Connect(function()
+	isRunning = not isRunning
+	if isRunning then
+		startBtn.Text = "STOP FARMING"
+		TweenService:Create(startBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(231, 76, 60)}):Play()
+		TweenService:Create(startGlow, TweenInfo.new(0.2), {Color = Color3.fromRGB(231, 76, 60)}):Play()
+		task.spawn(mainLoop)
+	else
+		startBtn.Text = "START FARMING"
+		TweenService:Create(startBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(46, 204, 113)}):Play()
+		TweenService:Create(startGlow, TweenInfo.new(0.2), {Color = Color3.fromRGB(46, 204, 113)}):Play()
+	end
+end)
