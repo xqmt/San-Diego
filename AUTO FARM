@@ -7,26 +7,26 @@ WindUI:AddTheme({
     
     -- More Soon!
     
-    Accent = Color3.fromHex("#18181b"),
+    Accent = Color3.fromHex("#5865F2"),
     Background = Color3.fromHex("#000000"), -- Accent
     BackgroundTransparency = 0,
     Outline = Color3.fromHex("#FFFFFF"),
     Text = Color3.fromHex("#FFFFFF"),
     Placeholder = Color3.fromHex("#7a7a7a"),
     Button = Color3.fromHex("#52525b"),
-    Icon = Color3.fromHex("#a1a1aa"),
+    Icon = Color3.fromHex("#5865F2"),
     
     Hover = Color3.fromHex("#FFFFFF"), -- Text
-    BackgroundTransparency = 0,
+    BackgroundTransparency = 0.6,
     
-    WindowBackground = Color3.fromHex("000000"), -- Background
-    WindowShadow = Color3.fromHex("ffffff"),
+    WindowBackground = Color3.fromHex("#000000"), -- Background
+    WindowShadow = Color3.fromHex("#5865F2"),
     
-    DialogBackground = Color3.fromHex("#101010"), -- Background
+    DialogBackground = Color3.fromHex("#000000"), -- Background
     DialogBackgroundTransparency = 0, -- BackgroundTransparency
     DialogTitle = Color3.fromHex("#FFFFFF"), -- Text
     DialogContent = Color3.fromHex("#FFFFFF"), -- Text
-    DialogIcon = Color3.fromHex("#a1a1aa"), -- Icon
+    DialogIcon = Color3.fromHex("#5865F2"), -- Icon
     
     WindowTopbarButtonIcon = Color3.fromHex("a1a1aa"), -- Icon
     WindowTopbarTitle = Color3.fromHex("FFFFFF"), -- Text
@@ -54,13 +54,13 @@ WindUI:AddTheme({
     DialogContent = Color3.fromHex("#FFFFFF"), -- Text
     DialogIcon = Color3.fromHex("#a1a1aa"), -- Icon
     
-    Toggle = Color3.fromHex("#52525b"), -- Button
+    Toggle = Color3.fromHex("#5865F2"), -- Button
     ToggleBar = Color3.fromHex("#FFFFFF"), -- White
     
     Checkbox = Color3.fromHex("#52525b"), -- Button
     CheckboxIcon = Color3.fromHex("#FFFFFF"), -- White
     
-    Slider = Color3.fromHex("#52525b"), -- Button
+    Slider = Color3.fromHex("#5865F2"), -- Button
     SliderThumb = Color3.fromHex("#FFFFFF"), -- White
     
 })
@@ -70,8 +70,6 @@ local Window = WindUI:CreateWindow({
     Title = "🌴 San Diego Auto Farm",
     Icon = "gamepad-2",
     Author = "if you're lag don't blame the script",
-    Glass = true,          -- เปิดโหมดเอฟเฟกต์กระจก
-    Transparency = 0.35,   -- ปรับความจางของพื้นหลังกระจก (0 = ทึบ, 1 = ใสสนิท)
 })
 
 -- 🚀 เรียกใช้งาน Theme Rainbow Pastels
@@ -93,7 +91,7 @@ local MainTab = Window:Tab({
 
 local MiscTab = Window:Tab({
     Title = "Misc",
-    Icon = "setting",
+    Icon = "Sword-2",
     Locked = false,
 })
 
