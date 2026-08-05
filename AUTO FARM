@@ -1,83 +1,44 @@
 local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
 
--- 🎨 Custom Theme
+-- 🎨 Custom Theme: Cyberpunk Neon Edition
 WindUI:AddTheme({
-    Name = "My Theme",
-    Accent = Color3.fromHex("#18181b"),
-    Background = Color3.fromHex("#101010"),
-    BackgroundTransparency = 0,
-    Outline = Color3.fromHex("#FFFFFF"),
-    Text = Color3.fromHex("#FFFFFF"),
-    Placeholder = Color3.fromHex("#7a7a7a"),
-    Button = Color3.fromHex("#52525b"),
-    Icon = Color3.fromHex("#a1a1aa"),
-    
-    Hover = Color3.fromHex("#FFFFFF"),
-    
-    WindowBackground = Color3.fromHex("#101010"),
-    WindowShadow = Color3.fromHex("#000000"),
-    
-    DialogBackground = Color3.fromHex("#101010"),
-    DialogBackgroundTransparency = 0,
-    DialogTitle = Color3.fromHex("#FFFFFF"),
-    DialogContent = Color3.fromHex("#FFFFFF"),
-    DialogIcon = Color3.fromHex("#a1a1aa"),
-    
-    WindowTopbarButtonIcon = Color3.fromHex("#a1a1aa"),
-    WindowTopbarTitle = Color3.fromHex("#FFFFFF"),
-    WindowTopbarAuthor = Color3.fromHex("#FFFFFF"),
-    WindowTopbarIcon = Color3.fromHex("#FFFFFF"),
-    
-    TabBackground = Color3.fromHex("#FFFFFF"),
-    TabTitle = Color3.fromHex("#FFFFFF"),
-    TabIcon = Color3.fromHex("#a1a1aa"),
-    
-    ElementBackground = Color3.fromHex("#101010"),
-    ElementTitle = Color3.fromHex("#FFFFFF"),
-    ElementDesc = Color3.fromHex("#FFFFFF"),
-    ElementIcon = Color3.fromHex("#a1a1aa"),
-    
-    PopupBackground = Color3.fromHex("#101010"),
-    PopupBackgroundTransparency = 0,
-    PopupTitle = Color3.fromHex("#FFFFFF"),
-    PopupContent = Color3.fromHex("#FFFFFF"),
-    PopupIcon = Color3.fromHex("#a1a1aa"),
-    
-    Toggle = Color3.fromHex("#52525b"),
-    ToggleBar = Color3.fromHex("#FFFFFF"),
-    
-    Checkbox = Color3.fromHex("#52525b"),
-    CheckboxIcon = Color3.fromHex("#FFFFFF"),
-    
-    Slider = Color3.fromHex("#52525b"),
-    SliderThumb = Color3.fromHex("#FFFFFF"),
+    Name = "CyberNeon",
+    Accent = Color3.fromHex("#a855f7"),      -- สีม่วงนีออน เด่น สะอาดตา
+    Background = Color3.fromHex("#09090b"),  -- สีดำ deep dark
+    Outline = Color3.fromHex("#27272a"),     -- เส้นขอบเทาเข้ม ละมุน ไม่แยงตา
+    Text = Color3.fromHex("#f4f4f5"),        -- ข้อความสีขาวสว่าง อ่านง่าย
+    Placeholder = Color3.fromHex("#71717a"), -- ข้อความรอพิมพ์
+    Button = Color3.fromHex("#18181b"),      -- ปุ่มกดโทนเข้มเข้ากับพื้นหลัง
+    Icon = Color3.fromHex("#38bdf8"),        -- ไอคอนสีฟ้าสดใส (Sky Blue)
 })
 
--- 🪟 Window & Tag
+-- 🪟 Window
 local Window = WindUI:CreateWindow({
     Title = "🌴 San Diego Auto Farm",
-    Icon = "sword",
+    Icon = "gamepad-2",
     Author = "if you're lag don't blame the script",
-    Theme = "My Theme",
 })
+
+-- 🚀 เรียกใช้งาน Theme ใหม่
+WindUI:SetTheme("CyberNeon")
 
 Window:Tag({
     Title = "v1.2",
-    Icon = "github",
-    Color = Color3.fromHex("#30ff6a"),
+    Icon = "sparkles",
+    Color = Color3.fromHex("#a855f7"),
     Radius = 10,
 })
 
--- 📑 Tabs
+-- 📑 Tabs (ปรับเปลี่ยนไอคอนให้ตรงหมวดหมู่)
 local MainTab = Window:Tab({
     Title = "Auto Farm",
-    Icon = "bird",
+    Icon = "bot",
     Locked = false,
 })
 
 local MiscTab = Window:Tab({
     Title = "Misc",
-    Icon = "settings",
+    Icon = "setting-2",
     Locked = false,
 })
 
@@ -770,15 +731,15 @@ local function mainLoop()
 end
 
 --------------------------------------------------------------------
--- 🎛️ WINDUI ELEMENTS & CONTROLS
+-- 🎛️ WINDUI ELEMENTS & CONTROLS (เปลี่ยนไอคอนใหม่ทั้งหมด)
 --------------------------------------------------------------------
 
 -- 🟢 1. Auto Farm Toggle
 MainTab:Toggle({
     Title = "Auto Farm",
     Desc = "",
-    Icon = "play",
-    Type = "Checkbox",
+    Icon = "power",
+    Type = "Toggle",
     Value = isRunning,
     Callback = function(state)
         isRunning = state
@@ -794,8 +755,8 @@ MainTab:Toggle({
 MainTab:Toggle({
     Title = "Auto Sell Goods",
     Desc = "",
-    Icon = "shopping-cart",
-    Type = "Checkbox",
+    Icon = "store",
+    Type = "Toggle",
     Value = autoSell,
     Callback = function(state)
         autoSell = state
@@ -806,8 +767,8 @@ MainTab:Toggle({
 MainTab:Toggle({
     Title = "Auto Launder Cash",
     Desc = "",
-    Icon = "dollar-sign",
-    Type = "Checkbox",
+    Icon = "banknote",
+    Type = "Toggle",
     Value = autoLaunder,
     Callback = function(state)
         autoLaunder = state
@@ -818,6 +779,7 @@ MainTab:Toggle({
 MainTab:Slider({
     Title = "Fly Speed",
     Desc = "",
+    Icon = "gauge",
     Step = 5,
     Value = {
         Min = 200,
@@ -833,6 +795,7 @@ MainTab:Slider({
 MainTab:Slider({
     Title = "Tween Height (Y)",
     Desc = "",
+    Icon = "arrow-up-right",
     Step = 0.1,
     Value = {
         Min = 1,
@@ -848,6 +811,7 @@ MainTab:Slider({
 MainTab:Slider({
     Title = "Target Amount",
     Desc = "",
+    Icon = "boxes",
     Step = 0.1,
     Value = {
         Min = 1,
@@ -863,6 +827,7 @@ MainTab:Slider({
 MainTab:Slider({
     Title = "Tween Delay (s)",
     Desc = "",
+    Icon = "timer",
     Step = 0.1,
     Value = {
         Min = 0,
@@ -878,6 +843,7 @@ MainTab:Slider({
 MainTab:Input({
     Title = "Item Name",
     Desc = "",
+    Icon = "package-search",
     Value = CONFIG.ItemName,
     Placeholder = "Fake Diamond Ring",
     Callback = function(text)
@@ -889,8 +855,8 @@ MainTab:Input({
 MiscTab:Toggle({
     Title = "Boost FPS",
     Desc = "",
-    Icon = "zap",
-    Type = "Checkbox",
+    Icon = "cpu",
+    Type = "Toggle",
     Value = fpsBoostActive,
     Callback = function(state)
         applyFPSBoost(state)
@@ -901,8 +867,8 @@ MiscTab:Toggle({
 MiscTab:Toggle({
     Title = "Anti Gameplay Paused",
     Desc = "",
-    Icon = "shield-alert",
-    Type = "Checkbox",
+    Icon = "shield-check",
+    Type = "Toggle",
     Value = antiPauseActive,
     Callback = function(state)
         applyAntiPause(state)
