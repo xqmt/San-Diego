@@ -69,10 +69,10 @@ if not successCore then
 	screenGui.Parent = player:WaitForChild("PlayerGui")
 end
 
--- Main Window Frame
+-- Main Window Frame (ปรับความกว้างจาก 520 เป็น 480 ให้กระชับขึ้น)
 local mainFrame = Instance.new("Frame")
-mainFrame.Size = UDim2.new(0, 440, 0, 480)
-mainFrame.Position = UDim2.new(0.5, -220, 0.25, 0)
+mainFrame.Size = UDim2.new(0, 480, 0, 500)
+mainFrame.Position = UDim2.new(0.5, -240, 0.25, 0)
 mainFrame.BackgroundColor3 = Color3.fromRGB(15, 17, 23)
 mainFrame.BorderSizePixel = 0
 mainFrame.Active = true
@@ -149,7 +149,7 @@ minStroke.Parent = minBtn
 
 -- Content Container
 local contentContainer = Instance.new("ScrollingFrame")
-contentContainer.Size = UDim2.new(1, -28, 1, -65)
+contentContainer.Size = UDim2.new(1, -28, 1, -85)
 contentContainer.Position = UDim2.new(0, 14, 0, 55)
 contentContainer.BackgroundTransparency = 1
 contentContainer.BorderSizePixel = 0
@@ -157,6 +157,18 @@ contentContainer.CanvasSize = UDim2.new(0, 0, 0, 410)
 contentContainer.ScrollBarThickness = 2
 contentContainer.ScrollBarImageColor3 = Color3.fromRGB(52, 152, 219)
 contentContainer.Parent = mainFrame
+
+-- เพิ่มข้อความสีแดงด้านล่าง San Diego auto farm (Lag Warning)
+local warningLabel = Instance.new("TextLabel")
+warningLabel.Size = UDim2.new(1, -28, 0, 20)
+warningLabel.Position = UDim2.new(0, 14, 1, -25)
+warningLabel.BackgroundTransparency = 1
+warningLabel.Text = "if you're lag don't blame the script"
+warningLabel.TextColor3 = Color3.fromRGB(231, 76, 60)
+warningLabel.TextSize = 11
+warningLabel.Font = Enum.Font.GothamBold
+warningLabel.TextXAlignment = Enum.TextXAlignment.Center
+warningLabel.Parent = mainFrame
 
 -- Window Dragging
 local dragging, dragInput, dragStart, startPos
@@ -186,10 +198,10 @@ UserInputService.InputChanged:Connect(function(input)
 	end
 end)
 
--- UI Builder Elements (Minimalist Floating Input & Toggles with Hover/Focus Glow Effects)
+-- UI Builder Elements (ลดความกว้างช่อง TextBox ให้แคบลงที่ 38% และขยาย Label เป็น 60%)
 local function createInputRow(parent, labelText, defaultVal, yPos, callback)
 	local label = Instance.new("TextLabel")
-	label.Size = UDim2.new(0.5, 0, 0, 34)
+	label.Size = UDim2.new(0.60, 0, 0, 34)
 	label.Position = UDim2.new(0, 0, 0, yPos)
 	label.BackgroundTransparency = 1
 	label.Text = labelText
@@ -200,8 +212,8 @@ local function createInputRow(parent, labelText, defaultVal, yPos, callback)
 	label.Parent = parent
 
 	local boxWrapper = Instance.new("Frame")
-	boxWrapper.Size = UDim2.new(0.46, 0, 0, 34)
-	boxWrapper.Position = UDim2.new(0.54, 0, 0, yPos)
+	boxWrapper.Size = UDim2.new(0.38, 0, 0, 34)
+	boxWrapper.Position = UDim2.new(0.62, 0, 0, yPos)
 	boxWrapper.BackgroundColor3 = Color3.fromRGB(22, 25, 35)
 	boxWrapper.BorderSizePixel = 0
 	boxWrapper.Parent = parent
@@ -359,13 +371,15 @@ local isMinimized = false
 minBtn.MouseButton1Click:Connect(function()
 	isMinimized = not isMinimized
 	if isMinimized then
-		mainFrame:TweenSize(UDim2.new(0, 440, 0, 50), Enum.EasingDirection.Out, Enum.EasingStyle.Quart, 0.3, true)
+		mainFrame:TweenSize(UDim2.new(0, 480, 0, 50), Enum.EasingDirection.Out, Enum.EasingStyle.Quart, 0.3, true)
 		minBtn.Text = "+"
 		contentContainer.Visible = false
+		warningLabel.Visible = false
 	else
-		mainFrame:TweenSize(UDim2.new(0, 440, 0, 480), Enum.EasingDirection.Out, Enum.EasingStyle.Quart, 0.3, true)
+		mainFrame:TweenSize(UDim2.new(0, 480, 0, 500), Enum.EasingDirection.Out, Enum.EasingStyle.Quart, 0.3, true)
 		minBtn.Text = "—"
 		contentContainer.Visible = true
+		warningLabel.Visible = true
 	end
 end)
 
