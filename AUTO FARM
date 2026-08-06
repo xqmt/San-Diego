@@ -1,48 +1,48 @@
 local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
 
--- 🎨 Custom Theme: Rainbow Pastels Edition
+-- 🎨 Custom Theme: Solid Black Edition
 WindUI:AddTheme({
-    Name = "RainbowPastel",
+    Name = "SolidBlack",
     
     Accent = Color3.fromHex("#ffffff"),
     Background = Color3.fromHex("#000000"),
-    BackgroundTransparency = 0.2,
+    BackgroundTransparency = 0,
     Outline = Color3.fromHex("#FFFFFF"),
     Text = Color3.fromHex("#FFFFFF"),
     Placeholder = Color3.fromHex("#7a7a7a"),
-    Button = Color3.fromHex("#52525b"),
+    Button = Color3.fromHex("#18181b"),
     Icon = Color3.fromHex("#FFFFFF"),
     
-    Hover = Color3.fromHex("#FFFFFF"),
+    Hover = Color3.fromHex("#27272a"),
     
     WindowBackground = Color3.fromHex("#000000"),
     WindowShadow = Color3.fromHex("#5865F2"),
     
-    DialogBackground = Color3.fromHex("#101010"),
+    DialogBackground = Color3.fromHex("#000000"),
     DialogBackgroundTransparency = 0,
     DialogTitle = Color3.fromHex("#FFFFFF"),
     DialogContent = Color3.fromHex("#FFFFFF"),
     DialogIcon = Color3.fromHex("#5865F2"),
     
-    WindowTopbarButtonIcon = Color3.fromHex("a1a1aa"),
+    WindowTopbarButtonIcon = Color3.fromHex("#a1a1aa"),
     WindowTopbarTitle = Color3.fromHex("#FFFFFF"),
     WindowTopbarAuthor = Color3.fromHex("#FFFFFF"),
     WindowTopbarIcon = Color3.fromHex("#FFFFFF"),
     
-    TabBackground = Color3.fromHex("#FFFFFF"),
+    TabBackground = Color3.fromHex("#000000"),
     TabTitle = Color3.fromHex("#FFFFFF"),
     TabIcon = Color3.fromHex("#ffffff"),
     
-    ElementBackground = Color3.fromHex("#FFFFFF"),
+    ElementBackground = Color3.fromHex("#0d0d0d"),
     ElementTitle = Color3.fromHex("#FFFFFF"),
-    ElementDesc = Color3.fromHex("#FFFFFF"),
+    ElementDesc = Color3.fromHex("#A1A1AA"),
     ElementIcon = Color3.fromHex("#FFFFFF"),
     
-    PopupBackground = Color3.fromHex("#101010"),
+    PopupBackground = Color3.fromHex("#000000"),
     PopupBackgroundTransparency = 0,
     PopupTitle = Color3.fromHex("#FFFFFF"),
     PopupContent = Color3.fromHex("#FFFFFF"),
-    PopupIcon = Color3.fromHex("a1a1aa"),
+    PopupIcon = Color3.fromHex("#a1a1aa"),
     
     Toggle = Color3.fromHex("#5865F2"),
     ToggleBar = Color3.fromHex("#FFFFFF"),
@@ -54,15 +54,15 @@ WindUI:AddTheme({
     SliderThumb = Color3.fromHex("#FFFFFF"),
 })
 
--- 🪟 สร้าง Window แบบสมบูรณ์
+-- 🪟 สร้าง Window แบบสมบูรณ์ (ปิด Transparent)
 local Window = WindUI:CreateWindow({
     Title = "🌴 San Diego Auto Farm",
     Icon = "monitor",
     Author = "",
     Folder = "SanDiegoFarm",
     Size = UDim2.fromOffset(580, 460),
-    Transparent = true,
-    Theme = "RainbowPastel",
+    Transparent = false,
+    Theme = "SolidBlack",
     SideBarWidth = 170,
     HasOutline = true,
     User = {
@@ -89,7 +89,9 @@ Window:EditOpenButton({
 Window:Tag({
     Title = "v1.2",
     Icon = "github",
-    Color = Color3.fromHex("#5865F2"),
+    Color = ColorSequence.new(
+        Color3.fromHex("5865F2"), 
+        Color3.fromHex("FFFFFF")
     Radius = 10,
 })
 
