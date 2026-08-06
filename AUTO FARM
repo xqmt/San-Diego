@@ -11,7 +11,7 @@ WindUI:AddTheme({
     Text = Color3.fromHex("#FFFFFF"),
     Placeholder = Color3.fromHex("#7a7a7a"),
     Button = Color3.fromHex("#52525b"),
-    Icon = Color3.fromHex("#5865F2"),
+    Icon = Color3.fromHex("#FFFFFF"),
     
     Hover = Color3.fromHex("#FFFFFF"),
     
@@ -129,6 +129,11 @@ local showPathLine = true
 local pathColor1 = Color3.fromHex("#5865F2")
 local pathColor2 = Color3.fromHex("#FFFFFF")
 
+-- 🌟 Custom Path Line Settings (Updated Default Values)
+local pathGlowSize = 1.2
+local pathLength = 6.5
+local pathSpeed = 0
+
 local lastVehicle = nil
 local lastVehicleCFrame = nil
 
@@ -208,6 +213,7 @@ pathFolder.Name = "AutoFarm_PathFolder"
 pathFolder.Parent = workspace
 
 local activePathObjects = {}
+local activeBeamsList = {}
 local pathAnimConnection = nil
 
 local function clearWaylines()
@@ -221,7 +227,19 @@ local function clearWaylines()
 		end
 	end
 	activePathObjects = {}
+	activeBeamsList = {}
 	pathFolder:ClearAllChildren()
+end
+
+local function updateActiveBeams()
+	for _, item in ipairs(activeBeamsList) do
+		if item.Beam and item.Beam.Parent then
+			item.Beam.Width0 = pathGlowSize
+			item.Beam.Width1 = pathGlowSize
+			item.Beam.TextureLength = pathLength
+			item.Beam.TextureSpeed = pathSpeed
+		end
+	end
 end
 
 local function drawForwardPath(waypoints, currentIndex)
@@ -240,7 +258,7 @@ local function drawForwardPath(waypoints, currentIndex)
 		table.insert(pointsToDraw, waypoints[i])
 	end
 
-	local beams = {}
+	activeBeamsList = {}
 
 	for i = 1, #pointsToDraw - 1 do
 		local pA = pointsToDraw[i]
@@ -271,11 +289,11 @@ local function drawForwardPath(waypoints, currentIndex)
 		
 		beam.Texture = "rbxassetid://446111271"
 		beam.TextureMode = Enum.TextureMode.Wrap
-		beam.TextureLength = 2
-		beam.TextureSpeed = 1.5
+		beam.TextureLength = pathLength
+		beam.TextureSpeed = pathSpeed
 		
-		beam.Width0 = 0.4
-		beam.Width1 = 0.4
+		beam.Width0 = pathGlowSize
+		beam.Width1 = pathGlowSize
 		beam.Transparency = NumberSequence.new(0)
 		beam.FaceCamera = true
 		beam.LightEmission = 1
@@ -285,14 +303,14 @@ local function drawForwardPath(waypoints, currentIndex)
 		table.insert(activePathObjects, partA)
 		table.insert(activePathObjects, partB)
 		table.insert(activePathObjects, beam)
-		table.insert(beams, {Beam = beam, Index = i})
+		table.insert(activeBeamsList, {Beam = beam, Index = i})
 	end
 
 	pathAnimConnection = RunService.RenderStepped:Connect(function()
 		local speed = 0.5
 		local offset = (tick() * speed) % 1
 
-		for _, item in ipairs(beams) do
+		for _, item in ipairs(activeBeamsList) do
 			if item.Beam and item.Beam.Parent then
 				local factorA = math.sin((offset + (item.Index * 0.1)) * math.pi * 2) * 0.5 + 0.5
 				local factorB = math.sin((offset + ((item.Index + 1) * 0.1)) * math.pi * 2) * 0.5 + 0.5
@@ -1077,6 +1095,54 @@ MiscTab:Toggle({
         if not showPathLine then
             clearWaylines()
         end
+    end
+})
+
+MiscTab:Slider({
+    Title = "Path Glow Size",
+    Desc = "Adjust line thickness and glow width",
+    Icon = "sparkles",
+    Step = 0.1,
+    Value = {
+        Min = 0.1,
+        Max = 3.0,
+        Default = pathGlowSize,
+    },
+    Callback = function(value)
+        pathGlowSize = value
+        updateActiveBeams()
+    end
+})
+
+MiscTab:Slider({
+    Title = "Path Texture Length",
+    Desc = "Adjust line pattern stretch length",
+    Icon = "ruler",
+    Step = 0.1,
+    Value = {
+        Min = 0.5,
+        Max = 10.0,
+        Default = pathLength,
+    },
+    Callback = function(value)
+        pathLength = value
+        updateActiveBeams()
+    end
+})
+
+MiscTab:Slider({
+    Title = "Path Texture Speed",
+    Desc = "Adjust path animation flow speed",
+    Icon = "zap",
+    Step = 0.1,
+    Value = {
+        Min = 0.0,
+        Max = 10.0,
+        Default = pathSpeed,
+    },
+    Callback = function(value)
+        pathSpeed = value
+        updateActiveBeams()
     end
 })
 
