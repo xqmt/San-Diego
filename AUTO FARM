@@ -981,7 +981,7 @@ MainTab:Slider({
     Step = 5,
     Value = {
         Min = 150,
-        Max = 300,
+        Max = 400,
         Default = CONFIG.Speed,
     },
     Callback = function(value)
