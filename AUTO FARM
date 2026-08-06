@@ -120,6 +120,10 @@ local autoLaunder = true
 local fpsBoostActive = false
 local antiPauseActive = false
 local noRenderActive = false
+local showPathLine = true
+local pathColor1 = Color3.fromHex("#5865F2")
+local pathColor2 = Color3.fromHex("#FFFFFF")
+
 local lastVehicle = nil
 local lastVehicleCFrame = nil
 
@@ -192,19 +196,19 @@ local postSellWaypoints = {
 }
 
 --------------------------------------------------------------------
--- 🌈 WAYPOINT LINE SYSTEM
+-- 🛣️ ANIMATED GRADIENT WAYPOINT LINE SYSTEM
 --------------------------------------------------------------------
 local pathFolder = workspace:FindFirstChild("AutoFarm_PathFolder") or Instance.new("Folder")
 pathFolder.Name = "AutoFarm_PathFolder"
 pathFolder.Parent = workspace
 
 local activePathObjects = {}
-local rainbowConnection = nil
+local pathAnimConnection = nil
 
 local function clearWaylines()
-	if rainbowConnection then
-		rainbowConnection:Disconnect()
-		rainbowConnection = nil
+	if pathAnimConnection then
+		pathAnimConnection:Disconnect()
+		pathAnimConnection = nil
 	end
 	for _, obj in ipairs(activePathObjects) do
 		if obj and obj.Parent then
@@ -217,7 +221,7 @@ end
 
 local function drawForwardPath(waypoints, currentIndex)
 	clearWaylines()
-	if not waypoints or currentIndex > #waypoints then return end
+	if not showPathLine or not waypoints or currentIndex > #waypoints then return end
 
 	local char = player.Character
 	if not char then return end
@@ -259,8 +263,8 @@ local function drawForwardPath(waypoints, currentIndex)
 		local beam = Instance.new("Beam")
 		beam.Attachment0 = attA
 		beam.Attachment1 = attB
-		beam.Width0 = 0.1
-		beam.Width1 = 0.1
+		beam.Width0 = 0.15
+		beam.Width1 = 0.15
 		beam.Transparency = NumberSequence.new(0.1)
 		beam.FaceCamera = true
 		beam.LightEmission = 0.8
@@ -273,21 +277,21 @@ local function drawForwardPath(waypoints, currentIndex)
 		table.insert(beams, {Beam = beam, Index = i})
 	end
 
-	rainbowConnection = RunService.RenderStepped:Connect(function()
-		local speed = 0.15
-		local hueOffset = (tick() * speed) % 1
+	pathAnimConnection = RunService.RenderStepped:Connect(function()
+		local speed = 0.5
+		local offset = (tick() * speed) % 1
 
 		for _, item in ipairs(beams) do
 			if item.Beam and item.Beam.Parent then
-				local hueA = (hueOffset + (item.Index * 0.05)) % 1
-				local hueB = (hueOffset + ((item.Index + 1) * 0.05)) % 1
+				local factorA = math.sin((offset + (item.Index * 0.1)) * math.pi * 2) * 0.5 + 0.5
+				local factorB = math.sin((offset + ((item.Index + 1) * 0.1)) * math.pi * 2) * 0.5 + 0.5
 
-				local colorA = Color3.fromHSV(hueA, 0.45, 1)
-				local colorB = Color3.fromHSV(hueB, 0.45, 1)
+				local cA = pathColor1:Lerp(pathColor2, factorA)
+				local cB = pathColor1:Lerp(pathColor2, factorB)
 
 				item.Beam.Color = ColorSequence.new({
-					ColorSequenceKeypoint.new(0, colorA),
-					ColorSequenceKeypoint.new(1, colorB)
+					ColorSequenceKeypoint.new(0, cA),
+					ColorSequenceKeypoint.new(1, cB)
 				})
 			end
 		end
@@ -451,7 +455,6 @@ local function getVehicleModel(seat)
 	return vehicleModel
 end
 
--- 🛠️ ฟังก์ชันแก้ปัญหารถตกแมพ/ตัวละครตกแมพ (ปรับปรุงระบบคุม Physics)
 local function dismountVehicle()
 	local char = player.Character
 	if not char then return end
@@ -461,7 +464,6 @@ local function dismountVehicle()
 	if humanoid and humanoid.SeatPart then
 		lastVehicle = getVehicleModel(humanoid.SeatPart)
 		if lastVehicle then
-			-- ล้างความเร็วและแรงเหวี่ยงทั้งหมด
 			for _, part in ipairs(lastVehicle:GetDescendants()) do
 				if part:IsA("BasePart") then
 					part.AssemblyLinearVelocity = Vector3.zero
@@ -475,7 +477,6 @@ local function dismountVehicle()
 			end
 		end
 		
-		-- บังคับล้างแรงจากตัวละคร
 		if hrp then
 			hrp.AssemblyLinearVelocity = Vector3.zero
 			hrp.AssemblyAngularVelocity = Vector3.zero
@@ -484,7 +485,6 @@ local function dismountVehicle()
 		humanoid.Sit = false
 		task.wait(0.1)
 		
-		-- ย้ายตัวละครขึ้นมายืนบนจุดปลอดภัยเหนือรถเล็กน้อย
 		if hrp and lastVehicle then
 			local primary = lastVehicle.PrimaryPart or lastVehicle:FindFirstChildWhichIsA("BasePart", true)
 			if primary then
@@ -502,7 +502,6 @@ local function getInVehicle()
 	local hrp = char:FindFirstChild("HumanoidRootPart")
 	if not hrp or not humanoid then return end
 	
-	-- ปลด Anchor ให้รถวิ่งได้
 	local primary = lastVehicle.PrimaryPart or lastVehicle:FindFirstChildWhichIsA("BasePart", true)
 	if primary then
 		primary.Anchored = false
@@ -532,7 +531,6 @@ local function getNearestWaypointIndex(waypoints, currentPos)
 	return closestIdx
 end
 
--- 🛠️ ระบบเคลื่อนที่และป้องกันการร่วงตกแมพ
 local function moveToPositionVelocity(targetPos)
 	local char = player.Character
 	if not char then return false, false end
@@ -547,7 +545,6 @@ local function moveToPositionVelocity(targetPos)
 	local movePart = (seat and vehicleModel) and (vehicleModel.PrimaryPart or seat) or hrp
 	if not movePart then return false, false end
 
-	-- แผ่นรองลอยใต้ตัวละคร/รถ ป้องกันหลุดตกแมพ
 	local floatPart = Instance.new("Part")
 	floatPart.Name = "AntiFall_FloatPlatform"
 	floatPart.Size = Vector3.new(30, 1, 30)
@@ -638,7 +635,6 @@ local function moveToPositionVelocity(targetPos)
 		movePart.AssemblyAngularVelocity = Vector3.zero
 	end
 
-	-- คืนค่า CanCollide ปกติให้ตัวละครเมื่อหยุดย้าย
 	if player.Character then
 		for _, part in ipairs(player.Character:GetDescendants()) do
 			if part:IsA("BasePart") then part.CanCollide = true end
@@ -801,7 +797,7 @@ local function mainLoop()
 				if goToTarget(savedBuyPart) then
 					while isRunning and getItemCount(CONFIG.ItemName) < CONFIG.Amount do
 						interactWith(savedBuyPart, savedBuyPrompt)
-						task.wait(0.2)
+						task.wait(0.01) -- ซื้อเร็วยังคงไว้ตามที่ขอ
 					end
 					getInVehicle()
 				end
@@ -824,7 +820,7 @@ local function mainLoop()
 					local attempts = 0
 					while isRunning and getItemCount(CONFIG.ItemName) > 0 and attempts < 25 do
 						interactWith(sellPart, sellPrompt)
-						task.wait(0.2)
+						task.wait(0.2) -- คืนค่าระยะเวลากดขายกลับมาเป็นเดิม
 						attempts = attempts + 1
 					end
 					getInVehicle()
@@ -847,7 +843,7 @@ local function mainLoop()
 					local launderAttempts = 0
 					while isRunning and getProcessableItemCount() > 0 and launderAttempts < 40 do
 						interactWith(launderPart, launderPrompt)
-						task.wait(0.3)
+						task.wait(0.05)
 						launderAttempts = launderAttempts + 1
 					end
 					task.wait(0.2)
@@ -1022,5 +1018,37 @@ MiscTab:Toggle({
     Value = noRenderActive,
     Callback = function(state)
         applyNoRender(state)
+    end
+})
+
+MiscTab:Toggle({
+    Title = "Show Path Line",
+    Desc = "Toggle visual path lines on/off",
+    Icon = "route",
+    Type = "Toggle",
+    Value = showPathLine,
+    Callback = function(state)
+        showPathLine = state
+        if not showPathLine then
+            clearWaylines()
+        end
+    end
+})
+
+MiscTab:Colorpicker({
+    Title = "Path Gradient Color 1",
+    Desc = "First color for animated path gradient",
+    Default = pathColor1,
+    Callback = function(color)
+        pathColor1 = color
+    end
+})
+
+MiscTab:Colorpicker({
+    Title = "Path Gradient Color 2",
+    Desc = "Second color for animated path gradient",
+    Default = pathColor2,
+    Callback = function(color)
+        pathColor2 = color
     end
 })
