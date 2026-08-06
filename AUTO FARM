@@ -65,6 +65,11 @@ local Window = WindUI:CreateWindow({
     Theme = "RainbowPastel",
     SideBarWidth = 170,
     HasOutline = true,
+    User = {
+        Enabled = true,
+        Anonymous = false,
+        Callback = function() print("clicked") end,
+    },
 })
 
 Window:EditOpenButton({
@@ -196,7 +201,7 @@ local postSellWaypoints = {
 }
 
 --------------------------------------------------------------------
--- 🛣️ ANIMATED GRADIENT WAYPOINT LINE SYSTEM
+-- 🛣️ REAL NEON TEXTURE WAYPOINT LINE SYSTEM
 --------------------------------------------------------------------
 local pathFolder = workspace:FindFirstChild("AutoFarm_PathFolder") or Instance.new("Folder")
 pathFolder.Name = "AutoFarm_PathFolder"
@@ -263,11 +268,18 @@ local function drawForwardPath(waypoints, currentIndex)
 		local beam = Instance.new("Beam")
 		beam.Attachment0 = attA
 		beam.Attachment1 = attB
-		beam.Width0 = 0.15
-		beam.Width1 = 0.15
-		beam.Transparency = NumberSequence.new(0.1)
+		
+		-- 💡 REAL NEON TEXTURE ASSET SETUP
+		beam.Texture = "rbxassetid://446111271" -- Neon Glow Line Asset
+		beam.TextureMode = Enum.TextureMode.Wrap
+		beam.TextureLength = 1
+		beam.TextureSpeed = 1
+		
+		beam.Width0 = 0.6
+		beam.Width1 = 0.6
+		beam.Transparency = NumberSequence.new(0)
 		beam.FaceCamera = true
-		beam.LightEmission = 0.8
+		beam.LightEmission = 1 -- ปล่อยแสงเรืองแสง 100%
 		beam.LightInfluence = 0
 		beam.Parent = pathFolder
 
@@ -797,7 +809,7 @@ local function mainLoop()
 				if goToTarget(savedBuyPart) then
 					while isRunning and getItemCount(CONFIG.ItemName) < CONFIG.Amount do
 						interactWith(savedBuyPart, savedBuyPrompt)
-						task.wait(0.01) -- ซื้อเร็วยังคงไว้ตามที่ขอ
+						task.wait(0.01)
 					end
 					getInVehicle()
 				end
@@ -820,7 +832,7 @@ local function mainLoop()
 					local attempts = 0
 					while isRunning and getItemCount(CONFIG.ItemName) > 0 and attempts < 25 do
 						interactWith(sellPart, sellPrompt)
-						task.wait(0.2) -- คืนค่าระยะเวลากดขายกลับมาเป็นเดิม
+						task.wait(0.2)
 						attempts = attempts + 1
 					end
 					getInVehicle()
