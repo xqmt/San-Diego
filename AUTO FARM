@@ -89,9 +89,7 @@ Window:EditOpenButton({
 Window:Tag({
     Title = "v1.2",
     Icon = "github",
-    Color = ColorSequence.new(
-        Color3.fromHex("5865F2"), 
-        Color3.fromHex("FFFFFF")
+    Color = Color3.fromHex("#30ff6a"),
     Radius = 10,
 })
 
