@@ -269,17 +269,16 @@ local function drawForwardPath(waypoints, currentIndex)
 		beam.Attachment0 = attA
 		beam.Attachment1 = attB
 		
-		-- 💡 REAL NEON TEXTURE ASSET SETUP
-		beam.Texture = "rbxassetid://446111271" -- Neon Glow Line Asset
+		beam.Texture = "rbxassetid://446111271"
 		beam.TextureMode = Enum.TextureMode.Wrap
-		beam.TextureLength = 1
-		beam.TextureSpeed = 1
+		beam.TextureLength = 2
+		beam.TextureSpeed = 1.5
 		
-		beam.Width0 = 0.6
-		beam.Width1 = 0.6
+		beam.Width0 = 0.4
+		beam.Width1 = 0.4
 		beam.Transparency = NumberSequence.new(0)
 		beam.FaceCamera = true
-		beam.LightEmission = 1 -- ปล่อยแสงเรืองแสง 100%
+		beam.LightEmission = 1
 		beam.LightInfluence = 0
 		beam.Parent = pathFolder
 
@@ -750,15 +749,40 @@ local function processWaypoints(waypoints, labelPrefix)
 	clearWaylines()
 end
 
+--------------------------------------------------------------------
+-- ⚙️ NEW INTERACT LOGIC (กดปุ่ม ซื้อ / ขาย / ซักเงิน แบบ BYPASS)
+--------------------------------------------------------------------
 local function interactWith(targetPart, prompt)
-	local activePrompt = prompt or targetPart:FindFirstChildOfClass("ProximityPrompt") or targetPart.Parent:FindFirstChildOfClass("ProximityPrompt") or targetPart:FindFirstChildWhichIsA("ProximityPrompt", true)
+	local activePrompt = prompt 
+		or (targetPart and targetPart:FindFirstChildOfClass("ProximityPrompt")) 
+		or (targetPart and targetPart.Parent and targetPart.Parent:FindFirstChildOfClass("ProximityPrompt")) 
+		or (targetPart and targetPart:FindFirstChildWhichIsA("ProximityPrompt", true))
+
 	if activePrompt then
-		if fireproximityprompt then fireproximityprompt(activePrompt)
-		else activePrompt:InputHoldBegin() task.wait(0.05) activePrompt:InputHoldEnd() end
-		return
+		activePrompt.HoldDuration = 0
+		
+		if fireproximityprompt then
+			fireproximityprompt(activePrompt)
+		else
+			pcall(function()
+				activePrompt:InputHoldBegin()
+				task.wait(0.01)
+				activePrompt:InputHoldEnd()
+			end)
+		end
+		return true
 	end
-	local clickDetector = targetPart:FindFirstChildOfClass("ClickDetector") or targetPart.Parent:FindFirstChildOfClass("ClickDetector") or targetPart:FindFirstChildWhichIsA("ClickDetector", true)
-	if clickDetector and fireclickdetector then fireclickdetector(clickDetector) end
+
+	local clickDetector = (targetPart and targetPart:FindFirstChildOfClass("ClickDetector")) 
+		or (targetPart and targetPart.Parent and targetPart.Parent:FindFirstChildOfClass("ClickDetector")) 
+		or (targetPart and targetPart:FindFirstChildWhichIsA("ClickDetector", true))
+
+	if clickDetector and fireclickdetector then
+		fireclickdetector(clickDetector)
+		return true
+	end
+
+	return false
 end
 
 local function getProcessableItemCount()
@@ -795,26 +819,31 @@ local function getItemCount(itemName)
 end
 
 --------------------------------------------------------------------
--- 🔄 MAIN LOOP
+-- 🔄 NEW MAIN LOOP (BUY / SELL GOODS / LAUNDER CASH LOGIC)
 --------------------------------------------------------------------
 local function mainLoop()
 	local savedBuyPart, savedBuyPrompt = nil, nil
 
 	while isRunning do
+		-- 🛒 1. LOGIC BUY (กดซื้อของ)
 		if getItemCount(CONFIG.ItemName) < CONFIG.Amount then
-			if not savedBuyPart then savedBuyPart, savedBuyPrompt = findTarget(CONFIG.ItemName) end
+			if not savedBuyPart or not savedBuyPart.Parent then 
+				savedBuyPart, savedBuyPrompt = findTarget(CONFIG.ItemName) 
+			end
+
 			if savedBuyPart then
 				getInVehicle()
-
 				if goToTarget(savedBuyPart) then
-					while isRunning and getItemCount(CONFIG.ItemName) < CONFIG.Amount do
+					local buyTimeout = 0
+					while isRunning and getItemCount(CONFIG.ItemName) < CONFIG.Amount and buyTimeout < 40 do
 						interactWith(savedBuyPart, savedBuyPrompt)
-						task.wait(0.01)
+						task.wait(0.05)
+						buyTimeout = buyTimeout + 1
 					end
 					getInVehicle()
 				end
 			else
-				task.wait(1)
+				task.wait(0.5)
 			end
 		end
 
@@ -822,23 +851,27 @@ local function mainLoop()
 		processWaypoints(postBuyWaypoints, "Post-Buy Route")
 		if not isRunning then break end
 
+		-- 💰 2. LOGIC SELL GOODS (กดขายของ)
 		if autoSell and getItemCount(CONFIG.ItemName) > 0 then
 			local lastBuyPos = postBuyWaypoints[#postBuyWaypoints]
 			local sellPart, sellPrompt = findNearestTargetToPos(CONFIG.SellName, lastBuyPos)
-			if not sellPart then sellPart, sellPrompt = findNearestTargetToPos("Smuggle", lastBuyPos) end
+			if not sellPart then 
+				sellPart, sellPrompt = findNearestTargetToPos("Smuggle", lastBuyPos) 
+			end
 
 			if sellPart then
+				getInVehicle()
 				if goToTarget(sellPart) then
-					local attempts = 0
-					while isRunning and getItemCount(CONFIG.ItemName) > 0 and attempts < 25 do
+					local sellAttempts = 0
+					while isRunning and getItemCount(CONFIG.ItemName) > 0 and sellAttempts < 35 do
 						interactWith(sellPart, sellPrompt)
-						task.wait(0.2)
-						attempts = attempts + 1
+						task.wait(0.08)
+						sellAttempts = sellAttempts + 1
 					end
 					getInVehicle()
 				end
 			else
-				task.wait(1)
+				task.wait(0.5)
 			end
 		end
 
@@ -846,23 +879,23 @@ local function mainLoop()
 		processWaypoints(postSellWaypoints, "Post-Sell Route")
 		if not isRunning then break end
 
+		-- 🧺 3. LOGIC LAUNDER CASH (กดซักเงิน / รับเงิน)
 		if autoLaunder then
-			getInVehicle()
-
 			local launderPart, launderPrompt = findTarget(CONFIG.LaunderName)
 			if launderPart then
+				getInVehicle()
 				if goToTarget(launderPart) then
 					local launderAttempts = 0
 					while isRunning and getProcessableItemCount() > 0 and launderAttempts < 40 do
 						interactWith(launderPart, launderPrompt)
-						task.wait(0.05)
+						task.wait(0.08)
 						launderAttempts = launderAttempts + 1
 					end
-					task.wait(0.2)
+					task.wait(0.1)
 					getInVehicle()
 				end
 			else
-				task.wait(1)
+				task.wait(0.5)
 			end
 		end
 		
