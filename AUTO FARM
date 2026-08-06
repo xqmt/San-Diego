@@ -119,13 +119,15 @@ local autoSell = true
 local autoLaunder = true
 local fpsBoostActive = false
 local antiPauseActive = false
+local noRenderActive = false
 local lastVehicle = nil
+local lastVehicleCFrame = nil
 
 local CONFIG = {
-	Speed = 280,
-	Height = 2,
+	Speed = 250,
+	Height = 2.5,
 	Amount = 5,
-	TweenDelay = 0, 
+	TweenDelay = 0.1, 
 	ItemName = "Fake Diamond Ring",
 	SellName = "Smuggle Goods Seller",
 	LaunderName = "Launder Cash"
@@ -149,6 +151,15 @@ local function applyAntiPause(state)
 				pauseScript:Destroy()
 			end
 		end)
+	end
+end
+
+local function applyNoRender(state)
+	noRenderActive = state
+	if state then
+		RunService:Set3dRenderingEnabled(false)
+	else
+		RunService:Set3dRenderingEnabled(true)
 	end
 end
 
@@ -439,14 +450,46 @@ local function getVehicleModel(seat)
 	return vehicleModel
 end
 
+-- 🛠️ ฟังก์ชันแก้ปัญหารถตกแมพ/ตัวละครตกแมพ (ปรับปรุงระบบคุม Physics)
 local function dismountVehicle()
 	local char = player.Character
 	if not char then return end
 	local humanoid = char:FindFirstChildOfClass("Humanoid")
+	local hrp = char:FindFirstChild("HumanoidRootPart")
+	
 	if humanoid and humanoid.SeatPart then
 		lastVehicle = getVehicleModel(humanoid.SeatPart)
+		if lastVehicle then
+			-- ล้างความเร็วและแรงเหวี่ยงทั้งหมด
+			for _, part in ipairs(lastVehicle:GetDescendants()) do
+				if part:IsA("BasePart") then
+					part.AssemblyLinearVelocity = Vector3.zero
+					part.AssemblyAngularVelocity = Vector3.zero
+				end
+			end
+			
+			local primary = lastVehicle.PrimaryPart or lastVehicle:FindFirstChildWhichIsA("BasePart", true)
+			if primary then
+				primary.Anchored = true
+			end
+		end
+		
+		-- บังคับล้างแรงจากตัวละคร
+		if hrp then
+			hrp.AssemblyLinearVelocity = Vector3.zero
+			hrp.AssemblyAngularVelocity = Vector3.zero
+		end
+
 		humanoid.Sit = false
 		task.wait(0.1)
+		
+		-- ย้ายตัวละครขึ้นมายืนบนจุดปลอดภัยเหนือรถเล็กน้อย
+		if hrp and lastVehicle then
+			local primary = lastVehicle.PrimaryPart or lastVehicle:FindFirstChildWhichIsA("BasePart", true)
+			if primary then
+				hrp.CFrame = primary.CFrame * CFrame.new(0, 5, 0)
+			end
+		end
 	end
 end
 
@@ -456,11 +499,20 @@ local function getInVehicle()
 	if not char then return end
 	local humanoid = char:FindFirstChildOfClass("Humanoid")
 	local hrp = char:FindFirstChild("HumanoidRootPart")
-	if not hrp or not humanoid or humanoid.SeatPart then return end
+	if not hrp or not humanoid then return end
+	
+	-- ปลด Anchor ให้รถวิ่งได้
+	local primary = lastVehicle.PrimaryPart or lastVehicle:FindFirstChildWhichIsA("BasePart", true)
+	if primary then
+		primary.Anchored = false
+	end
+
+	if humanoid.SeatPart then return end
+	
 	local seat = lastVehicle:FindFirstChildWhichIsA("VehicleSeat", true) or lastVehicle:FindFirstChildWhichIsA("Seat", true)
 	if seat then
 		hrp.CFrame = seat.CFrame + Vector3.new(0, 2, 0)
-		task.wait(0.05)
+		task.wait(0.1)
 		seat:Sit(humanoid)
 		task.wait(0.2)
 	end
@@ -479,49 +531,58 @@ local function getNearestWaypointIndex(waypoints, currentPos)
 	return closestIdx
 end
 
+-- 🛠️ ระบบเคลื่อนที่และป้องกันการร่วงตกแมพ
 local function moveToPositionVelocity(targetPos)
 	local char = player.Character
-	if not char then return false end
+	if not char then return false, false end
 	
 	local humanoid = char:FindFirstChildOfClass("Humanoid")
 	local hrp = char:FindFirstChild("HumanoidRootPart")
-	if not hrp or not humanoid then return false end
+	if not hrp or not humanoid then return false, false end
 
 	local seat = humanoid.SeatPart
 	local vehicleModel = getVehicleModel(seat)
 	
 	local movePart = (seat and vehicleModel) and (vehicleModel.PrimaryPart or seat) or hrp
-	if not movePart then return false end
+	if not movePart then return false, false end
 
+	-- แผ่นรองลอยใต้ตัวละคร/รถ ป้องกันหลุดตกแมพ
 	local floatPart = Instance.new("Part")
 	floatPart.Name = "AntiFall_FloatPlatform"
-	floatPart.Size = Vector3.new(15, 1, 15)
+	floatPart.Size = Vector3.new(30, 1, 30)
 	floatPart.Anchored = true
 	floatPart.CanCollide = true
 	floatPart.Transparency = 1
 	floatPart.Parent = workspace
 
 	local bodyVel = Instance.new("BodyVelocity")
-	bodyVel.MaxForce = Vector3.new(1e6, 1e6, 1e6)
+	bodyVel.MaxForce = Vector3.new(1e7, 1e7, 1e7)
 	bodyVel.Velocity = Vector3.zero
 	bodyVel.Parent = movePart
 
 	local bodyGyro = Instance.new("BodyGyro")
-	bodyGyro.MaxTorque = Vector3.new(1e6, 1e6, 1e6)
+	bodyGyro.MaxTorque = Vector3.new(1e7, 1e7, 1e7)
+	bodyGyro.P = 10000
 	bodyGyro.CFrame = movePart.CFrame
 	bodyGyro.Parent = movePart
 
 	local noclipConnection = RunService.Stepped:Connect(function()
 		if not isRunning then return end
-		if movePart and movePart.Parent then floatPart.CFrame = movePart.CFrame * CFrame.new(0, -3.5, 0) end
+		if movePart and movePart.Parent then 
+			floatPart.CFrame = movePart.CFrame * CFrame.new(0, -3.5, 0) 
+		end
 		if player.Character then
 			for _, part in ipairs(player.Character:GetDescendants()) do
-				if part:IsA("BasePart") and part ~= floatPart then part.CanCollide = false end
+				if part:IsA("BasePart") and part ~= floatPart then 
+					part.CanCollide = false 
+				end
 			end
 		end
 		if vehicleModel then
 			for _, part in ipairs(vehicleModel:GetDescendants()) do
-				if part:IsA("BasePart") and part ~= floatPart then part.CanCollide = false end
+				if part:IsA("BasePart") and part ~= floatPart then 
+					part.CanCollide = false 
+				end
 			end
 		end
 	end)
@@ -531,6 +592,8 @@ local function moveToPositionVelocity(targetPos)
 	local rubberbandDetected = false
 	local previousPos = movePart.Position
 
+	local stopThreshold = math.clamp(CONFIG.Speed * 0.04, 6, 15)
+
 	local renderConnection = RunService.Heartbeat:Connect(function()
 		if not isRunning or not movePart or not movePart.Parent then arrived = false return end
 
@@ -538,7 +601,7 @@ local function moveToPositionVelocity(targetPos)
 		local moveDelta = (currentPos - previousPos).Magnitude
 		local distToTarget = (targetPosWithHeight - currentPos).Magnitude
 
-		if moveDelta > 30 and distToTarget > 12 then
+		if moveDelta > 45 and distToTarget > 20 then
 			rubberbandDetected = true
 			bodyVel.Velocity = Vector3.zero
 			return
@@ -546,12 +609,12 @@ local function moveToPositionVelocity(targetPos)
 		
 		previousPos = currentPos
 
-		if distToTarget <= 8 then
+		if distToTarget <= stopThreshold then
 			arrived = true
 			return
 		end
 
-		local speedFactor = math.clamp(distToTarget / 25, 0.3, 1)
+		local speedFactor = math.clamp(distToTarget / 40, 0.25, 1)
 		local currentSpeed = CONFIG.Speed * speedFactor
 		local direction = (targetPosWithHeight - currentPos)
 		
@@ -572,6 +635,13 @@ local function moveToPositionVelocity(targetPos)
 	if movePart and movePart.Parent then
 		movePart.AssemblyLinearVelocity = Vector3.zero
 		movePart.AssemblyAngularVelocity = Vector3.zero
+	end
+
+	-- คืนค่า CanCollide ปกติให้ตัวละครเมื่อหยุดย้าย
+	if player.Character then
+		for _, part in ipairs(player.Character:GetDescendants()) do
+			if part:IsA("BasePart") then part.CanCollide = true end
+		end
 	end
 
 	return arrived, rubberbandDetected
@@ -641,7 +711,7 @@ local function processWaypoints(waypoints, labelPrefix)
 		local arrived, rubberbandDetected = moveToPositionVelocity(targetPos)
 
 		if rubberbandDetected then
-			task.wait(0.5)
+			task.wait(0.3)
 
 			local char = player.Character
 			local hrp = char and char:FindFirstChild("HumanoidRootPart")
@@ -659,10 +729,10 @@ local function processWaypoints(waypoints, labelPrefix)
 					if vModel then movePart = vModel.PrimaryPart or humanoid.SeatPart end
 				end
 
-				local recoverTween = TweenService:Create(movePart, TweenInfo.new(0.6, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {CFrame = CFrame.new(safeTargetPos)})
+				local recoverTween = TweenService:Create(movePart, TweenInfo.new(0.5, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {CFrame = CFrame.new(safeTargetPos)})
 				recoverTween:Play()
 				recoverTween.Completed:Wait()
-				task.wait(0.2)
+				task.wait(0.1)
 			end
 		elseif arrived then
 			currentIndex = currentIndex + 1
@@ -796,7 +866,6 @@ end
 -- 🎛️ WINDUI ELEMENTS & CONTROLS
 --------------------------------------------------------------------
 
--- แก้ไขให้ใช้ Paragraph แทน Title ที่ใส่ผิดโครงสร้าง
 ReadTab:Paragraph({
     Title = "⚠️ Warning",
     Content = ""
@@ -851,7 +920,7 @@ MainTab:Slider({
     Icon = "gauge",
     Step = 5,
     Value = {
-        Min = 200,
+        Min = 150,
         Max = 300,
         Default = CONFIG.Speed,
     },
@@ -941,5 +1010,16 @@ MiscTab:Toggle({
     Value = antiPauseActive,
     Callback = function(state)
         applyAntiPause(state)
+    end
+})
+
+MiscTab:Toggle({
+    Title = "No Render",
+    Desc = "",
+    Icon = "eye-off",
+    Type = "Toggle",
+    Value = noRenderActive,
+    Callback = function(state)
+        applyNoRender(state)
     end
 })
