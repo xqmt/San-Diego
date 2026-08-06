@@ -181,6 +181,7 @@ local postBuyWaypoints = {
 }
 
 local postSellWaypoints = {
+    Vector3.new(-33.5, 49.3, 429.2),
 	Vector3.new(-24.6, 53.5, 405.4),
 	Vector3.new(23.4, 17.2, 348.7),
 	Vector3.new(169.1, 17.2, 148.7),
