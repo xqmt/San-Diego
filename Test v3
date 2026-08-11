@@ -1064,14 +1064,3 @@ do
 		Callback = function(color) pathColor2 = color end,
 	})
 end
-
-
-
-
-
-WindUI:Gradient({                                                      
-    ["0"] = { Color = Color3.fromHex("#1f1f23"), Transparency = 0 },            
-    ["100"]   = { Color = Color3.fromHex("#18181b"), Transparency = 0 },      
-}, {                                                                            
-    Rotation = 0,                                                               
-}),
