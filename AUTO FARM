@@ -1,113 +1,75 @@
-local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
+local repo = "https://raw.githubusercontent.com/cloudsense-pub/UELinoriaLib/main/"
 
--- 🎨 Custom Theme: Solid Black Edition
-WindUI:AddTheme({
-    Name = "SolidBlack",
-    
-    Accent = Color3.fromHex("#ffffff"),
-    Background = Color3.fromHex("#000000"),
-    BackgroundTransparency = 0,
-    Outline = Color3.fromHex("#FFFFFF"),
-    Text = Color3.fromHex("#FFFFFF"),
-    Placeholder = Color3.fromHex("#7a7a7a"),
-    Button = Color3.fromHex("#18181b"),
-    Icon = Color3.fromHex("#FFFFFF"),
-    
-    Hover = Color3.fromHex("#27272a"),
-    
-    WindowBackground = Color3.fromHex("#000000"),
-    WindowShadow = Color3.fromHex("#5865F2"),
-    
-    DialogBackground = Color3.fromHex("#000000"),
-    DialogBackgroundTransparency = 0,
-    DialogTitle = Color3.fromHex("#FFFFFF"),
-    DialogContent = Color3.fromHex("#FFFFFF"),
-    DialogIcon = Color3.fromHex("#5865F2"),
-    
-    WindowTopbarButtonIcon = Color3.fromHex("#a1a1aa"),
-    WindowTopbarTitle = Color3.fromHex("#FFFFFF"),
-    WindowTopbarAuthor = Color3.fromHex("#FFFFFF"),
-    WindowTopbarIcon = Color3.fromHex("#FFFFFF"),
-    
-    TabBackground = Color3.fromHex("#000000"),
-    TabTitle = Color3.fromHex("#FFFFFF"),
-    TabIcon = Color3.fromHex("#ffffff"),
-    
-    ElementBackground = Color3.fromHex("#0d0d0d"),
-    ElementTitle = Color3.fromHex("#FFFFFF"),
-    ElementDesc = Color3.fromHex("#A1A1AA"),
-    ElementIcon = Color3.fromHex("#FFFFFF"),
-    
-    PopupBackground = Color3.fromHex("#000000"),
-    PopupBackgroundTransparency = 0,
-    PopupTitle = Color3.fromHex("#FFFFFF"),
-    PopupContent = Color3.fromHex("#FFFFFF"),
-    PopupIcon = Color3.fromHex("#a1a1aa"),
-    
-    Toggle = Color3.fromHex("#5865F2"),
-    ToggleBar = Color3.fromHex("#FFFFFF"),
-    
-    Checkbox = Color3.fromHex("#52525b"),
-    CheckboxIcon = Color3.fromHex("#FFFFFF"),
-    
-    Slider = Color3.fromHex("#5865F2"),
-    SliderThumb = Color3.fromHex("#FFFFFF"),
+local Library = loadstring(game:HttpGet(repo .. "Library.lua"))()
+local ThemeManager = loadstring(game:HttpGet(repo .. "addons/ThemeManager.lua"))()
+local SaveManager = loadstring(game:HttpGet(repo .. "addons/SaveManager.lua"))()
+
+--------------------------------------------------------------------
+-- 🎨 FORCE UI FONT TO CARTOON
+--------------------------------------------------------------------
+Library.Font = Enum.Font.Cartoon
+
+-- Override ฟังก์ชันปรับแต่งฟอนต์ของ LinoriaLib เพื่อบังคับใช้ Cartoon ทุกตำแหน่ง
+if Library.SetFont then
+	local oldSetFont = Library.SetFont
+	Library.SetFont = function(self, font)
+		return oldSetFont(self, Enum.Font.Cartoon)
+	end
+end
+
+-- บังคับเปลี่ยนฟอนต์ของออบเจกต์ที่สร้างขึ้นมาใหม่ทั้งหมดใน Library
+local oldCreate = Library.Create
+if oldCreate then
+	Library.Create = function(self, instanceType, properties)
+		local instance = oldCreate(self, instanceType, properties)
+		if instance and (instance:IsA("TextLabel") or instance:IsA("TextButton") or instance:IsA("TextBox")) then
+			instance.Font = Enum.Font.Cartoon
+		end
+		return instance
+	end
+end
+
+local Options = getgenv().Options
+local Toggles = getgenv().Toggles
+
+Library.ShowToggleFrameInKeybinds = true
+Library.ShowCustomCursor = true
+Library.NotifySide = "Left"
+
+local Window = Library:CreateWindow({
+	Title = "🌴 San Diego Auto Farm | v2         ",
+	Center = true,
+	AutoShow = true,
+	Resizable = true,
+	ShowCustomCursor = true,
+	UnlockMouseWhileOpen = true,
+	NotifySide = "Left",
+	TabPadding = 8,
+	MenuFadeTime = 0.2
 })
 
--- 🪟 สร้าง Window แบบสมบูรณ์ (ปิด Transparent)
-local Window = WindUI:CreateWindow({
-    Title = "🌴 San Diego Auto Farm",
-    Icon = "monitor",
-    Author = "",
-    Folder = "SanDiegoFarm",
-    Size = UDim2.fromOffset(580, 460),
-    Transparent = false,
-    Theme = "SolidBlack",
-    SideBarWidth = 170,
-    HasOutline = true,
-    User = {
-        Enabled = true,
-        Anonymous = false,
-        Callback = function() print("clicked") end,
-    },
-})
+--------------------------------------------------------------------
+-- 📑 TABS & GROUPS
+--------------------------------------------------------------------
+local Tabs = {
+	Read = Window:AddTab("Read"),
+	Main = Window:AddTab("Auto Farm"),
+	Misc = Window:AddTab("Misc"),
+	["UI Settings"] = Window:AddTab("UI Settings"),
+}
 
-Window:EditOpenButton({
-    Title = "🌴 San Diego Auto Farm",
-    Icon = "monitor",
-    CornerRadius = UDim.new(0,16),
-    StrokeThickness = 2,
-    Color = ColorSequence.new(
-        Color3.fromHex("5865F2"), 
-        Color3.fromHex("FFFFFF")
-    ),
-    OnlyMobile = false,
-    Enabled = true,
-    Draggable = true,
-})
+-- Read Tab
+local ReadGroup = Tabs.Read:AddLeftGroupbox("Information")
+ReadGroup:AddLabel("⚠️ Warning", true)
+ReadGroup:AddLabel("ℹ️ If you're laggy don't blame the script!!", true)
 
-Window:Tag({
-    Title = "v1.2",
-    Icon = "github",
-    Color = Color3.fromHex("#30ff6a"),
-    Radius = 10,
-})
+-- Main Tab Groups
+local FarmGroup = Tabs.Main:AddLeftGroupbox("Farm Controls")
+local ConfigGroup = Tabs.Main:AddRightGroupbox("Farm Settings")
 
--- 📑 Tabs
-local ReadTab = Window:Tab({
-    Title = "Read",
-    Icon = "triangle-alert",
-})
-
-local MainTab = Window:Tab({
-    Title = "Auto Farm",
-    Icon = "bot",
-})
-
-local MiscTab = Window:Tab({
-    Title = "Misc",
-    Icon = "sliders-horizontal",
-})
+-- Misc Tab Groups
+local PerformanceGroup = Tabs.Misc:AddLeftGroupbox("Performance & Protection")
+local VisualGroup = Tabs.Misc:AddRightGroupbox("Path Visualizer")
 
 --------------------------------------------------------------------
 -- ⚙️ VARIABLES & CONFIGS
@@ -129,13 +91,11 @@ local showPathLine = true
 local pathColor1 = Color3.fromHex("#5865F2")
 local pathColor2 = Color3.fromHex("#FFFFFF")
 
--- 🌟 Custom Path Line Settings (Updated Default Values)
 local pathGlowSize = 1.2
 local pathLength = 6.5
 local pathSpeed = 0
 
 local lastVehicle = nil
-local lastVehicleCFrame = nil
 
 local CONFIG = {
 	Speed = 250,
@@ -177,36 +137,46 @@ local function applyNoRender(state)
 	end
 end
 
+-- 📌 WAYPOINTS ขาไป
 local postBuyWaypoints = {
-	Vector3.new(6837.8, 17.2, 30.7),
-	Vector3.new(6843.8, 17.2, 101.4),
-	Vector3.new(2785.6, 17.2, 94.8),
-	Vector3.new(2669.2, 17.2, 111.6),
-	Vector3.new(97.4, 17.2, 112.9),
-	Vector3.new(54.6, 17.2, 341.1),
-	Vector3.new(-124.1, 17.2, 394.1),
-	Vector3.new(-101.3, 17.2, 505.4),
-	Vector3.new(13.0, 17.2, 494.9),
-	Vector3.new(44.5, 17.2, 431.0),
-	Vector3.new(47.6, 33.3, 563.5),
-	Vector3.new(29.3, 33.3, 424.0),
-	Vector3.new(42.9, 49.3, 561.7),
-	Vector3.new(-80.5, 49.3, 428.5)
+	Vector3.new(6848.1, 17.2, 41.7),
+	Vector3.new(6847.4, 17.2, 123.1),
+	Vector3.new(6677.9, 17.2, 139.1),
+	Vector3.new(3665.8, 17.2, 151.2),
+	Vector3.new(3448.5, 36.3, 206.6),
+	Vector3.new(3372.3, 29.4, 203.5),
+	Vector3.new(2379.2, 17.2, 401.0),
+	Vector3.new(1957.8, 38.8, 371.3),
+	Vector3.new(1081.6, 49.4, 459.8),
+	Vector3.new(996.0, 37.9, 439.4),
+	Vector3.new(665.9, 21.7, 364.1),
+	Vector3.new(85.0, 17.2, 379.3),
+	Vector3.new(51.5, 17.2, 421.6),
+	Vector3.new(59.1, 33.3, 566.1),
+	Vector3.new(-41.3, 33.2, 540.9),
+	Vector3.new(-83.3, 33.2, 429.4),
+	Vector3.new(-83.0, 49.2, 432.2)
 }
 
+-- 📌 WAYPOINTS ขากลับ
 local postSellWaypoints = {
-    Vector3.new(-33.5, 49.3, 429.2),
-	Vector3.new(-24.6, 53.5, 405.4),
-	Vector3.new(23.4, 17.2, 348.7),
-	Vector3.new(169.1, 17.2, 148.7),
-	Vector3.new(2848.5, 17.2, 159.6),
-	Vector3.new(6867.7, 17.2, 133.0),
-	Vector3.new(6832.1, 17.4, -41.5),
-	Vector3.new(6805.6, 17.4, -34.4)
+	Vector3.new(-25.4, 49.3, 436.7),
+	Vector3.new(99.2, 24.7, 436.0),
+	Vector3.new(823.6, 25.8, 408.0),
+	Vector3.new(1161.3, 41.0, 399.0),
+	Vector3.new(1973.6, 36.7, 389.6),
+	Vector3.new(2879.1, 26.5, 367.4),
+	Vector3.new(3047.2, 21.6, 364.3),
+	Vector3.new(3349.9, 33.1, 323.4),
+	Vector3.new(3625.3, 26.5, 219.6),
+	Vector3.new(4459.7, 17.2, 152.0),
+	Vector3.new(6743.4, 17.2, 148.5),
+	Vector3.new(6848.8, 17.3, 75.7),
+	Vector3.new(6834.0, 17.4, -42.9)
 }
 
 --------------------------------------------------------------------
--- 🛣️ REAL NEON TEXTURE WAYPOINT LINE SYSTEM
+-- 🛣️ PATH LINE SYSTEM
 --------------------------------------------------------------------
 local pathFolder = workspace:FindFirstChild("AutoFarm_PathFolder") or Instance.new("Folder")
 pathFolder.Name = "AutoFarm_PathFolder"
@@ -768,7 +738,7 @@ local function processWaypoints(waypoints, labelPrefix)
 end
 
 --------------------------------------------------------------------
--- ⚙️ NEW INTERACT LOGIC (กดปุ่ม ซื้อ / ขาย / ซักเงิน แบบ BYPASS)
+-- ⚙️ INTERACT LOGIC
 --------------------------------------------------------------------
 local function interactWith(targetPart, prompt)
 	local activePrompt = prompt 
@@ -837,13 +807,12 @@ local function getItemCount(itemName)
 end
 
 --------------------------------------------------------------------
--- 🔄 NEW MAIN LOOP (BUY / SELL GOODS / LAUNDER CASH LOGIC)
+-- 🔄 MAIN LOOP
 --------------------------------------------------------------------
 local function mainLoop()
 	local savedBuyPart, savedBuyPrompt = nil, nil
 
 	while isRunning do
-		-- 🛒 1. LOGIC BUY (กดซื้อของ)
 		if getItemCount(CONFIG.ItemName) < CONFIG.Amount then
 			if not savedBuyPart or not savedBuyPart.Parent then 
 				savedBuyPart, savedBuyPrompt = findTarget(CONFIG.ItemName) 
@@ -853,9 +822,9 @@ local function mainLoop()
 				getInVehicle()
 				if goToTarget(savedBuyPart) then
 					local buyTimeout = 0
-					while isRunning and getItemCount(CONFIG.ItemName) < CONFIG.Amount and buyTimeout < 40 do
+					while isRunning and getItemCount(CONFIG.ItemName) < CONFIG.Amount and buyTimeout < 50 do
 						interactWith(savedBuyPart, savedBuyPrompt)
-						task.wait(0.05)
+						task.wait(0.08)
 						buyTimeout = buyTimeout + 1
 					end
 					getInVehicle()
@@ -869,8 +838,7 @@ local function mainLoop()
 		processWaypoints(postBuyWaypoints, "Post-Buy Route")
 		if not isRunning then break end
 
-		-- 💰 2. LOGIC SELL GOODS (กดขายของ)
-		if autoSell and getItemCount(CONFIG.ItemName) > 0 then
+		if autoSell then
 			local lastBuyPos = postBuyWaypoints[#postBuyWaypoints]
 			local sellPart, sellPrompt = findNearestTargetToPos(CONFIG.SellName, lastBuyPos)
 			if not sellPart then 
@@ -880,12 +848,13 @@ local function mainLoop()
 			if sellPart then
 				getInVehicle()
 				if goToTarget(sellPart) then
-					local sellAttempts = 0
-					while isRunning and getItemCount(CONFIG.ItemName) > 0 and sellAttempts < 35 do
+					local sellTimeout = 0
+					while isRunning and getItemCount(CONFIG.ItemName) > 0 and sellTimeout < 100 do
 						interactWith(sellPart, sellPrompt)
-						task.wait(0.08)
-						sellAttempts = sellAttempts + 1
+						task.wait(0.15)
+						sellTimeout = sellTimeout + 1
 					end
+
 					getInVehicle()
 				end
 			else
@@ -897,14 +866,13 @@ local function mainLoop()
 		processWaypoints(postSellWaypoints, "Post-Sell Route")
 		if not isRunning then break end
 
-		-- 🧺 3. LOGIC LAUNDER CASH (กดซักเงิน / รับเงิน)
 		if autoLaunder then
 			local launderPart, launderPrompt = findTarget(CONFIG.LaunderName)
 			if launderPart then
 				getInVehicle()
 				if goToTarget(launderPart) then
 					local launderAttempts = 0
-					while isRunning and getProcessableItemCount() > 0 and launderAttempts < 40 do
+					while isRunning and getProcessableItemCount() > 0 and launderAttempts < 60 do
 						interactWith(launderPart, launderPrompt)
 						task.wait(0.08)
 						launderAttempts = launderAttempts + 1
@@ -923,243 +891,233 @@ local function mainLoop()
 end
 
 --------------------------------------------------------------------
--- 🎛️ WINDUI ELEMENTS & CONTROLS
+-- 🎛️ LINORIA UI CONTROLS & BINDINGS
 --------------------------------------------------------------------
 
-ReadTab:Paragraph({
-    Title = "⚠️ Warning",
-    Content = ""
+-- Auto Farm Controls
+FarmGroup:AddToggle("AutoFarmToggle", {
+	Text = "Auto Farm",
+	Default = isRunning,
+	Callback = function(Value)
+		isRunning = Value
+		if isRunning then
+			task.spawn(mainLoop)
+		else
+			clearWaylines()
+		end
+	end
 })
 
-ReadTab:Paragraph({
-    Title = "ℹ️ If you're laggy don't blame the script!!",
-    Content = ""
+FarmGroup:AddToggle("AutoSellToggle", {
+	Text = "Auto Sell Goods",
+	Default = autoSell,
+	Callback = function(Value)
+		autoSell = Value
+	end
 })
 
-MainTab:Toggle({
-    Title = "Auto Farm",
-    Desc = "",
-    Icon = "power",
-    Type = "Toggle",
-    Value = isRunning,
-    Callback = function(state)
-        isRunning = state
-        if isRunning then
-            task.spawn(mainLoop)
-        else
-            clearWaylines()
-        end
-    end
+FarmGroup:AddToggle("AutoLaunderToggle", {
+	Text = "Auto Launder Cash",
+	Default = autoLaunder,
+	Callback = function(Value)
+		autoLaunder = Value
+	end
 })
 
-MainTab:Toggle({
-    Title = "Auto Sell Goods",
-    Desc = "",
-    Icon = "store",
-    Type = "Toggle",
-    Value = autoSell,
-    Callback = function(state)
-        autoSell = state
-    end
+-- Farm Settings
+ConfigGroup:AddSlider("FlySpeedSlider", {
+	Text = "Fly Speed",
+	Default = CONFIG.Speed,
+	Min = 150,
+	Max = 300,
+	Rounding = 0,
+	Compact = false,
+	Callback = function(Value)
+		CONFIG.Speed = Value
+	end
 })
 
-MainTab:Toggle({
-    Title = "Auto Launder Cash",
-    Desc = "",
-    Icon = "banknote",
-    Type = "Toggle",
-    Value = autoLaunder,
-    Callback = function(state)
-        autoLaunder = state
-    end
+ConfigGroup:AddSlider("TweenHeightSlider", {
+	Text = "Tween Height (Y)",
+	Default = CONFIG.Height,
+	Min = 1,
+	Max = 5,
+	Rounding = 1,
+	Compact = false,
+	Callback = function(Value)
+		CONFIG.Height = Value
+	end
 })
 
-MainTab:Slider({
-    Title = "Fly Speed",
-    Desc = "",
-    Icon = "gauge",
-    Step = 5,
-    Value = {
-        Min = 150,
-        Max = 300,
-        Default = CONFIG.Speed,
-    },
-    Callback = function(value)
-        CONFIG.Speed = value
-    end
+ConfigGroup:AddSlider("TargetAmountSlider", {
+	Text = "Target Amount",
+	Default = CONFIG.Amount,
+	Min = 1,
+	Max = 5,
+	Rounding = 0,
+	Compact = false,
+	Callback = function(Value)
+		CONFIG.Amount = Value
+	end
 })
 
-MainTab:Slider({
-    Title = "Tween Height (Y)",
-    Desc = "",
-    Icon = "arrow-up-right",
-    Step = 0.1,
-    Value = {
-        Min = 1,
-        Max = 5,
-        Default = CONFIG.Height,
-    },
-    Callback = function(value)
-        CONFIG.Height = value
-    end
+ConfigGroup:AddSlider("TweenDelaySlider", {
+	Text = "Tween Delay (s)",
+	Default = CONFIG.TweenDelay,
+	Min = 0,
+	Max = 5,
+	Rounding = 1,
+	Compact = false,
+	Callback = function(Value)
+		CONFIG.TweenDelay = Value
+	end
 })
 
-MainTab:Slider({
-    Title = "Target Amount",
-    Desc = "",
-    Icon = "boxes",
-    Step = 1,
-    Value = {
-        Min = 1,
-        Max = 5,
-        Default = CONFIG.Amount,
-    },
-    Callback = function(value)
-        CONFIG.Amount = value
-    end
+ConfigGroup:AddDropdown("SelectItemDropdown", {
+	Values = {
+		"Crate Of Avacados",
+		"Wagyu Beef",
+		"Witches Brew",
+		"Fake Designer Sneakers",
+		"Fake Diamond Ring"
+	},
+	Default = 5,
+	Multi = false,
+	Text = "Select Item",
+	Callback = function(Value)
+		CONFIG.ItemName = Value
+	end
 })
 
-MainTab:Slider({
-    Title = "Tween Delay (s)",
-    Desc = "",
-    Icon = "timer",
-    Step = 0.1,
-    Value = {
-        Min = 0,
-        Max = 5,
-        Default = CONFIG.TweenDelay,
-    },
-    Callback = function(value)
-        CONFIG.TweenDelay = value
-    end
+-- Performance Controls
+PerformanceGroup:AddToggle("BoostFPSToggle", {
+	Text = "Boost FPS",
+	Default = fpsBoostActive,
+	Callback = function(Value)
+		applyFPSBoost(Value)
+	end
 })
 
-MainTab:Dropdown({
-    Title = "Select Item",
-    Desc = "",
-    Icon = "package-search",
-    Values = {
-        "Crate Of Avacados",
-        "Wagyu Beef",
-        "Witches Brew",
-        "Fake Designer Sneakers",
-        "Fake Diamond Ring"
-    },
-    Value = CONFIG.ItemName,
-    Callback = function(selected)
-        CONFIG.ItemName = selected
-    end
+PerformanceGroup:AddToggle("AntiPauseToggle", {
+	Text = "Anti Gameplay Paused",
+	Default = antiPauseActive,
+	Callback = function(Value)
+		applyAntiPause(Value)
+	end
 })
 
-MiscTab:Toggle({
-    Title = "Boost FPS",
-    Desc = "",
-    Icon = "cpu",
-    Type = "Toggle",
-    Value = fpsBoostActive,
-    Callback = function(state)
-        applyFPSBoost(state)
-    end
+PerformanceGroup:AddToggle("NoRenderToggle", {
+	Text = "No Render",
+	Default = noRenderActive,
+	Callback = function(Value)
+		applyNoRender(Value)
+	end
 })
 
-MiscTab:Toggle({
-    Title = "Anti Gameplay Paused",
-    Desc = "",
-    Icon = "shield-check",
-    Type = "Toggle",
-    Value = antiPauseActive,
-    Callback = function(state)
-        applyAntiPause(state)
-    end
+-- Visual Controls
+VisualGroup:AddToggle("ShowPathToggle", {
+	Text = "Show Path Line",
+	Default = showPathLine,
+	Callback = function(Value)
+		showPathLine = Value
+		if not showPathLine then
+			clearWaylines()
+		end
+	end
 })
 
-MiscTab:Toggle({
-    Title = "No Render",
-    Desc = "",
-    Icon = "eye-off",
-    Type = "Toggle",
-    Value = noRenderActive,
-    Callback = function(state)
-        applyNoRender(state)
-    end
+VisualGroup:AddSlider("PathGlowSizeSlider", {
+	Text = "Path Glow Size",
+	Default = pathGlowSize,
+	Min = 0.1,
+	Max = 3.0,
+	Rounding = 1,
+	Compact = false,
+	Callback = function(Value)
+		pathGlowSize = Value
+		updateActiveBeams()
+	end
 })
 
-MiscTab:Toggle({
-    Title = "Show Path Line",
-    Desc = "Toggle visual path lines on/off",
-    Icon = "route",
-    Type = "Toggle",
-    Value = showPathLine,
-    Callback = function(state)
-        showPathLine = state
-        if not showPathLine then
-            clearWaylines()
-        end
-    end
+VisualGroup:AddSlider("PathLengthSlider", {
+	Text = "Path Texture Length",
+	Default = pathLength,
+	Min = 0.5,
+	Max = 10.0,
+	Rounding = 1,
+	Compact = false,
+	Callback = function(Value)
+		pathLength = Value
+		updateActiveBeams()
+	end
 })
 
-MiscTab:Slider({
-    Title = "Path Glow Size",
-    Desc = "Adjust line thickness and glow width",
-    Icon = "sparkles",
-    Step = 0.1,
-    Value = {
-        Min = 0.1,
-        Max = 3.0,
-        Default = pathGlowSize,
-    },
-    Callback = function(value)
-        pathGlowSize = value
-        updateActiveBeams()
-    end
+VisualGroup:AddSlider("PathSpeedSlider", {
+	Text = "Path Texture Speed",
+	Default = pathSpeed,
+	Min = 0.0,
+	Max = 10.0,
+	Rounding = 1,
+	Compact = false,
+	Callback = function(Value)
+		pathSpeed = Value
+		updateActiveBeams()
+	end
 })
 
-MiscTab:Slider({
-    Title = "Path Texture Length",
-    Desc = "Adjust line pattern stretch length",
-    Icon = "ruler",
-    Step = 0.1,
-    Value = {
-        Min = 0.5,
-        Max = 10.0,
-        Default = pathLength,
-    },
-    Callback = function(value)
-        pathLength = value
-        updateActiveBeams()
-    end
+VisualGroup:AddLabel("Path Gradient Colors")
+	:AddColorPicker("PathColorPicker1", {
+		Default = pathColor1,
+		Title = "Path Color 1",
+		Callback = function(Value)
+			pathColor1 = Value
+		end
+	})
+	:AddColorPicker("PathColorPicker2", {
+		Default = pathColor2,
+		Title = "Path Color 2",
+		Callback = function(Value)
+			pathColor2 = Value
+		end
+	})
+
+--------------------------------------------------------------------
+-- 🛠️ UI SETTINGS (LINORIA CONFIG & THEME MANAGER)
+--------------------------------------------------------------------
+local MenuGroup = Tabs["UI Settings"]:AddLeftGroupbox("Menu")
+
+MenuGroup:AddToggle("KeybindMenuOpen", {
+	Default = Library.KeybindFrame.Visible,
+	Text = "Open Keybind Menu",
+	Callback = function(Value)
+		Library.KeybindFrame.Visible = Value
+	end
 })
 
-MiscTab:Slider({
-    Title = "Path Texture Speed",
-    Desc = "Adjust path animation flow speed",
-    Icon = "zap",
-    Step = 0.1,
-    Value = {
-        Min = 0.0,
-        Max = 10.0,
-        Default = pathSpeed,
-    },
-    Callback = function(value)
-        pathSpeed = value
-        updateActiveBeams()
-    end
+MenuGroup:AddToggle("ShowCustomCursor", {
+	Text = "Custom Cursor",
+	Default = true,
+	Callback = function(Value)
+		Library.ShowCustomCursor = Value
+	end
 })
 
-MiscTab:Colorpicker({
-    Title = "Path Gradient Color 1",
-    Desc = "First color for animated path gradient",
-    Default = pathColor1,
-    Callback = function(color)
-        pathColor1 = color
-    end
-})
+MenuGroup:AddDivider()
+MenuGroup:AddLabel("Menu bind"):AddKeyPicker("MenuKeybind", { Default = "RightShift", NoUI = true, Text = "Menu keybind" })
+MenuGroup:AddButton("Unload", function() Library:Unload() end)
 
-MiscTab:Colorpicker({
-    Title = "Path Gradient Color 2",
-    Desc = "Second color for animated path gradient",
-    Default = pathColor2,
-    Callback = function(color)
-        pathColor2 = color
-    end
-})
+Library.ToggleKeybind = Options.MenuKeybind
+
+ThemeManager:SetLibrary(Library)
+SaveManager:SetLibrary(Library)
+
+SaveManager:IgnoreThemeSettings()
+SaveManager:SetIgnoreIndexes({ "MenuKeybind" })
+
+ThemeManager:SetFolder("SanDiegoFarm")
+SaveManager:SetFolder("SanDiegoFarm/config")
+
+SaveManager:BuildConfigSection(Tabs["UI Settings"])
+ThemeManager:ApplyToTab(Tabs["UI Settings"])
+
+SaveManager:LoadAutoloadConfig()
