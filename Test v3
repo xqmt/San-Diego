@@ -1,1 +1,1130 @@
+local repo = "https://raw.githubusercontent.com/cloudsense-pub/UELinoriaLib/main/"
 
+local Library = loadstring(game:HttpGet(repo .. "Library.lua"))()
+local ThemeManager = loadstring(game:HttpGet(repo .. "addons/ThemeManager.lua"))()
+local SaveManager = loadstring(game:HttpGet(repo .. "addons/SaveManager.lua"))()
+
+--------------------------------------------------------------------
+-- 🎨 FORCE UI FONT TO CARTOON
+--------------------------------------------------------------------
+Library.Font = Enum.Font.Cartoon
+
+-- Override ฟังก์ชันปรับแต่งฟอนต์ของ LinoriaLib เพื่อบังคับใช้ Cartoon ทุกตำแหน่ง
+if Library.SetFont then
+	local oldSetFont = Library.SetFont
+	Library.SetFont = function(self, font)
+		return oldSetFont(self, Enum.Font.Cartoon)
+	end
+end
+
+-- บังคับเปลี่ยนฟอนต์ของออบเจกต์ที่สร้างขึ้นมาใหม่ทั้งหมดใน Library
+local oldCreate = Library.Create
+if oldCreate then
+	Library.Create = function(self, instanceType, properties)
+		local instance = oldCreate(self, instanceType, properties)
+		if instance and (instance:IsA("TextLabel") or instance:IsA("TextButton") or instance:IsA("TextBox")) then
+			instance.Font = Enum.Font.Cartoon
+		end
+		return instance
+	end
+end
+
+local Options = getgenv().Options
+local Toggles = getgenv().Toggles
+
+Library.ShowToggleFrameInKeybinds = true
+Library.ShowCustomCursor = true
+Library.NotifySide = "Left"
+
+local Window = Library:CreateWindow({
+	Title = "🌴 San Diego Auto Farm | v2                                             ",
+	Center = true,
+	AutoShow = true,
+	Resizable = true,
+	ShowCustomCursor = true,
+	UnlockMouseWhileOpen = true,
+	NotifySide = "Left",
+	TabPadding = 8,
+	MenuFadeTime = 0.2
+})
+
+--------------------------------------------------------------------
+-- 📑 TABS & GROUPS
+--------------------------------------------------------------------
+local Tabs = {
+	Read = Window:AddTab("Read"),
+	Combats = Window:AddTab("Combats"),
+	Main = Window:AddTab("Auto Farm"),
+	Misc = Window:AddTab("Misc"),
+	["UI Settings"] = Window:AddTab("UI Settings"),
+}
+
+-- Read Tab
+local ReadGroup = Tabs.Read:AddLeftGroupbox("Information")
+ReadGroup:AddLabel("⚠️ Warning", true)
+ReadGroup:AddLabel("ℹ️ If you're laggy don't blame the script!!", true)
+
+-- Combats Tab Groups
+local TabBox = Tabs.Combats:AddLeftTabbox() -- Add Tabbox on left side
+
+local Tab1 = TabBox:AddTab("Silent-aim")
+local Tab2 = TabBox:AddTab("Fov")
+
+-- Main Tab Groups
+local FarmGroup = Tabs.Main:AddLeftGroupbox("Farm Controls")
+local ConfigGroup = Tabs.Main:AddRightGroupbox("Farm Settings")
+
+-- Misc Tab Groups
+local PerformanceGroup = Tabs.Misc:AddLeftGroupbox("Performance & Protection")
+local VisualGroup = Tabs.Misc:AddRightGroupbox("Path Visualizer")
+
+--------------------------------------------------------------------
+-- ⚙️ VARIABLES & CONFIGS
+--------------------------------------------------------------------
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+local Lighting = game:GetService("Lighting")
+
+local player = Players.LocalPlayer
+
+local isRunning = false
+local autoSell = true
+local autoLaunder = true
+local fpsBoostActive = false
+local antiPauseActive = false
+local noRenderActive = false
+local showPathLine = true
+local pathColor1 = Color3.fromHex("#5865F2")
+local pathColor2 = Color3.fromHex("#FFFFFF")
+
+local pathGlowSize = 1.2
+local pathLength = 6.5
+local pathSpeed = 0
+
+local lastVehicle = nil
+
+local CONFIG = {
+	Speed = 250,
+	Height = 2.5,
+	Amount = 5,
+	TweenDelay = 0.1, 
+	ItemName = "Fake Diamond Ring",
+	SellName = "Smuggle Goods Seller",
+	LaunderName = "Launder Cash"
+}
+
+local PROTECTED_ITEMS = {
+	["fists"] = true,
+	["passport"] = true
+}
+
+local function isProtectedItem(itemName)
+	return PROTECTED_ITEMS[string.lower(itemName)] == true
+end
+
+local function applyAntiPause(state)
+	antiPauseActive = state
+	if state then
+		pcall(function()
+			local pauseScript = game:GetService("CoreGui"):FindFirstChild("RobloxGui") and game:GetService("CoreGui").RobloxGui:FindFirstChild("CoreScripts/NetworkPause")
+			if pauseScript then
+				pauseScript:Destroy()
+			end
+		end)
+	end
+end
+
+local function applyNoRender(state)
+	noRenderActive = state
+	if state then
+		RunService:Set3dRenderingEnabled(false)
+	else
+		RunService:Set3dRenderingEnabled(true)
+	end
+end
+
+-- 📌 WAYPOINTS ขาไป
+local postBuyWaypoints = {
+	Vector3.new(6848.1, 17.2, 41.7),
+	Vector3.new(6847.4, 17.2, 123.1),
+	Vector3.new(6677.9, 17.2, 139.1),
+	Vector3.new(3665.8, 17.2, 151.2),
+	Vector3.new(3448.5, 36.3, 206.6),
+	Vector3.new(3372.3, 29.4, 203.5),
+	Vector3.new(2379.2, 17.2, 401.0),
+	Vector3.new(1957.8, 38.8, 371.3),
+	Vector3.new(1081.6, 49.4, 459.8),
+	Vector3.new(996.0, 37.9, 439.4),
+	Vector3.new(665.9, 21.7, 364.1),
+	Vector3.new(85.0, 17.2, 379.3),
+	Vector3.new(51.5, 17.2, 421.6),
+	Vector3.new(59.1, 33.3, 566.1),
+	Vector3.new(-41.3, 33.2, 540.9),
+	Vector3.new(-83.3, 33.2, 429.4),
+	Vector3.new(-83.0, 49.2, 432.2)
+}
+
+-- 📌 WAYPOINTS ขากลับ
+local postSellWaypoints = {
+	Vector3.new(-25.4, 49.3, 436.7),
+	Vector3.new(99.2, 24.7, 436.0),
+	Vector3.new(823.6, 25.8, 408.0),
+	Vector3.new(1161.3, 41.0, 399.0),
+	Vector3.new(1973.6, 36.7, 389.6),
+	Vector3.new(2879.1, 26.5, 367.4),
+	Vector3.new(3047.2, 21.6, 364.3),
+	Vector3.new(3349.9, 33.1, 323.4),
+	Vector3.new(3625.3, 26.5, 219.6),
+	Vector3.new(4459.7, 17.2, 152.0),
+	Vector3.new(6743.4, 17.2, 148.5),
+	Vector3.new(6848.8, 17.3, 75.7),
+	Vector3.new(6834.0, 17.4, -42.9)
+}
+
+--------------------------------------------------------------------
+-- 🛣️ PATH LINE SYSTEM
+--------------------------------------------------------------------
+local pathFolder = workspace:FindFirstChild("AutoFarm_PathFolder") or Instance.new("Folder")
+pathFolder.Name = "AutoFarm_PathFolder"
+pathFolder.Parent = workspace
+
+local activePathObjects = {}
+local activeBeamsList = {}
+local pathAnimConnection = nil
+
+local function clearWaylines()
+	if pathAnimConnection then
+		pathAnimConnection:Disconnect()
+		pathAnimConnection = nil
+	end
+	for _, obj in ipairs(activePathObjects) do
+		if obj and obj.Parent then
+			obj:Destroy()
+		end
+	end
+	activePathObjects = {}
+	activeBeamsList = {}
+	pathFolder:ClearAllChildren()
+end
+
+local function updateActiveBeams()
+	for _, item in ipairs(activeBeamsList) do
+		if item.Beam and item.Beam.Parent then
+			item.Beam.Width0 = pathGlowSize
+			item.Beam.Width1 = pathGlowSize
+			item.Beam.TextureLength = pathLength
+			item.Beam.TextureSpeed = pathSpeed
+		end
+	end
+end
+
+local function drawForwardPath(waypoints, currentIndex)
+	clearWaylines()
+	if not showPathLine or not waypoints or currentIndex > #waypoints then return end
+
+	local char = player.Character
+	if not char then return end
+	local hrp = char:FindFirstChild("HumanoidRootPart")
+	if not hrp then return end
+
+	local pointsToDraw = {}
+	table.insert(pointsToDraw, hrp.Position)
+
+	for i = currentIndex, #waypoints do
+		table.insert(pointsToDraw, waypoints[i])
+	end
+
+	activeBeamsList = {}
+
+	for i = 1, #pointsToDraw - 1 do
+		local pA = pointsToDraw[i]
+		local pB = pointsToDraw[i+1]
+
+		local partA = Instance.new("Part")
+		partA.Size = Vector3.new(0.1, 0.1, 0.1)
+		partA.Position = pA
+		partA.Anchored = true
+		partA.CanCollide = false
+		partA.Transparency = 1
+		partA.Parent = pathFolder
+
+		local partB = Instance.new("Part")
+		partB.Size = Vector3.new(0.1, 0.1, 0.1)
+		partB.Position = pB
+		partB.Anchored = true
+		partB.CanCollide = false
+		partB.Transparency = 1
+		partB.Parent = pathFolder
+
+		local attA = Instance.new("Attachment", partA)
+		local attB = Instance.new("Attachment", partB)
+
+		local beam = Instance.new("Beam")
+		beam.Attachment0 = attA
+		beam.Attachment1 = attB
+		
+		beam.Texture = "rbxassetid://446111271"
+		beam.TextureMode = Enum.TextureMode.Wrap
+		beam.TextureLength = pathLength
+		beam.TextureSpeed = pathSpeed
+		
+		beam.Width0 = pathGlowSize
+		beam.Width1 = pathGlowSize
+		beam.Transparency = NumberSequence.new(0)
+		beam.FaceCamera = true
+		beam.LightEmission = 1
+		beam.LightInfluence = 0
+		beam.Parent = pathFolder
+
+		table.insert(activePathObjects, partA)
+		table.insert(activePathObjects, partB)
+		table.insert(activePathObjects, beam)
+		table.insert(activeBeamsList, {Beam = beam, Index = i})
+	end
+
+	pathAnimConnection = RunService.RenderStepped:Connect(function()
+		local speed = 0.5
+		local offset = (tick() * speed) % 1
+
+		for _, item in ipairs(activeBeamsList) do
+			if item.Beam and item.Beam.Parent then
+				local factorA = math.sin((offset + (item.Index * 0.1)) * math.pi * 2) * 0.5 + 0.5
+				local factorB = math.sin((offset + ((item.Index + 1) * 0.1)) * math.pi * 2) * 0.5 + 0.5
+
+				local cA = pathColor1:Lerp(pathColor2, factorA)
+				local cB = pathColor1:Lerp(pathColor2, factorB)
+
+				item.Beam.Color = ColorSequence.new({
+					ColorSequenceKeypoint.new(0, cA),
+					ColorSequenceKeypoint.new(1, cB)
+				})
+			end
+		end
+	end)
+end
+
+--------------------------------------------------------------------
+-- ⚡ FPS BOOST
+--------------------------------------------------------------------
+local originalLightingSettings = {}
+local fpsConnections = {}
+
+local function stripCharacter(char)
+	if not char then return end
+	local children = char:GetChildren()
+	for i = #children, 1, -1 do
+		local item = children[i]
+		if item:IsA("Accessory") or item:IsA("Clothing") or item:IsA("ShirtGraphic") or item:IsA("Shirt") or item:IsA("Pants") or item:IsA("CharacterMesh") then
+			pcall(function() item:Destroy() end)
+		end
+	end
+end
+
+local function optimizeInst(v)
+	if not v then return end
+	pcall(function()
+		if v:IsA("BasePart") then
+			v.Material = Enum.Material.SmoothPlastic
+			v.CastShadow = false
+			v.Reflectance = 0
+		elseif v:IsA("Decal") or v:IsA("Texture") then
+			v:Destroy()
+		elseif v:IsA("ParticleEmitter") or v:IsA("Trail") or v:IsA("Smoke") or v:IsA("Fire") or v:IsA("Sparkles") then
+			v.Enabled = false
+		elseif v:IsA("Light") then
+			v.Enabled = false
+		end
+	end)
+end
+
+local function applyFPSBoost(state)
+	fpsBoostActive = state
+	if state then
+		originalLightingSettings.GlobalShadows = Lighting.GlobalShadows
+		originalLightingSettings.OutdoorAmbient = Lighting.OutdoorAmbient
+		originalLightingSettings.Ambient = Lighting.Ambient
+		originalLightingSettings.FogEnd = Lighting.FogEnd
+		originalLightingSettings.Technology = Lighting.Technology
+
+		Lighting.GlobalShadows = false
+		Lighting.OutdoorAmbient = Color3.fromRGB(0, 0, 0)
+		Lighting.Ambient = Color3.fromRGB(15, 15, 15)
+		Lighting.FogEnd = 9e9
+		
+		pcall(function() Lighting.Technology = Enum.Technology.Compatibility end)
+
+		local lightingChildren = Lighting:GetChildren()
+		for i = #lightingChildren, 1, -1 do
+			local child = lightingChildren[i]
+			if child:IsA("Sky") or child:IsA("Atmosphere") or child:IsA("PostEffect") or child:IsA("BloomEffect") or child:IsA("BlurEffect") or child:IsA("SunRaysEffect") then
+				pcall(function() child:Destroy() end)
+			end
+		end
+		
+		local darkSky = Instance.new("Sky")
+		darkSky.Name = "FPSBoostSky"
+		darkSky.SkyboxBk = "rbxassetid://0"
+		darkSky.SkyboxDn = "rbxassetid://0"
+		darkSky.SkyboxFt = "rbxassetid://0"
+		darkSky.SkyboxLf = "rbxassetid://0"
+		darkSky.SkyboxRt = "rbxassetid://0"
+		darkSky.SkyboxUp = "rbxassetid://0"
+		darkSky.SkyboxColor = Color3.fromRGB(10, 10, 10)
+		darkSky.Parent = Lighting
+
+		local descendants = workspace:GetDescendants()
+		for i = 1, #descendants do optimizeInst(descendants[i]) end
+
+		local connAdded = workspace.DescendantAdded:Connect(function(v)
+			if fpsBoostActive then task.wait() optimizeInst(v) end
+		end)
+		table.insert(fpsConnections, connAdded)
+
+		for _, p in ipairs(Players:GetPlayers()) do
+			if p.Character then stripCharacter(p.Character) end
+			local connChar = p.CharacterAdded:Connect(function(char)
+				if fpsBoostActive then
+					char:WaitForChild("Humanoid", 5)
+					task.wait(0.2)
+					stripCharacter(char)
+				end
+			end)
+			table.insert(fpsConnections, connChar)
+		end
+	else
+		for _, conn in ipairs(fpsConnections) do if conn then conn:Disconnect() end end
+		fpsConnections = {}
+		Lighting.GlobalShadows = originalLightingSettings.GlobalShadows or true
+		Lighting.OutdoorAmbient = originalLightingSettings.OutdoorAmbient or Color3.fromRGB(128, 128, 128)
+		Lighting.Ambient = originalLightingSettings.Ambient or Color3.fromRGB(128, 128, 128)
+		local currentSky = Lighting:FindFirstChild("FPSBoostSky")
+		if currentSky then currentSky:Destroy() end
+	end
+end
+
+--------------------------------------------------------------------
+-- 🧠 TARGET & ROUTING HELPERS
+--------------------------------------------------------------------
+local function findTarget(keyword)
+	local key = string.lower(keyword)
+	for _, prompt in ipairs(workspace:GetDescendants()) do
+		if prompt:IsA("ProximityPrompt") then
+			local objText = string.lower(prompt.ObjectText or "")
+			local actText = string.lower(prompt.ActionText or "")
+			local parentName = string.lower(prompt.Parent and prompt.Parent.Name or "")
+			if string.find(objText, key) or string.find(actText, key) or string.find(parentName, key) then
+				local targetPart = prompt:FindFirstAncestorWhichIsA("BasePart") or prompt.Parent
+				if targetPart:IsA("BasePart") then return targetPart, prompt
+				elseif targetPart:IsA("Model") then
+					local part = targetPart.PrimaryPart or targetPart:FindFirstChildWhichIsA("BasePart", true)
+					if part then return part, prompt end
+				end
+			end
+		end
+	end
+	return nil, nil
+end
+
+local function findNearestTargetToPos(keyword, pos)
+	local key = string.lower(keyword)
+	local nearestPart, nearestPrompt = nil, nil
+	local minDistance = math.huge
+	for _, prompt in ipairs(workspace:GetDescendants()) do
+		if prompt:IsA("ProximityPrompt") then
+			local objText = string.lower(prompt.ObjectText or "")
+			local actText = string.lower(prompt.ActionText or "")
+			local parentName = string.lower(prompt.Parent and prompt.Parent.Name or "")
+			if string.find(objText, key) or string.find(actText, key) or string.find(parentName, key) then
+				local targetPart = prompt:FindFirstAncestorWhichIsA("BasePart") or prompt.Parent
+				if targetPart then
+					local part = targetPart:IsA("BasePart") and targetPart or targetPart.PrimaryPart or targetPart:FindFirstChildWhichIsA("BasePart", true)
+					if part then
+						local dist = (pos - part.Position).Magnitude
+						if dist < minDistance then minDistance = dist nearestPart = part nearestPrompt = prompt end
+					end
+				end
+			end
+		end
+	end
+	return nearestPart, nearestPrompt
+end
+
+local function getVehicleModel(seat)
+	if not seat then return nil end
+	local current = seat
+	local vehicleModel = nil
+	while current and current ~= workspace do
+		if current:IsA("Model") then vehicleModel = current end
+		current = current.Parent
+	end
+	return vehicleModel
+end
+
+local function dismountVehicle()
+	local char = player.Character
+	if not char then return end
+	local humanoid = char:FindFirstChildOfClass("Humanoid")
+	local hrp = char:FindFirstChild("HumanoidRootPart")
+	
+	if humanoid and humanoid.SeatPart then
+		lastVehicle = getVehicleModel(humanoid.SeatPart)
+		if lastVehicle then
+			for _, part in ipairs(lastVehicle:GetDescendants()) do
+				if part:IsA("BasePart") then
+					part.AssemblyLinearVelocity = Vector3.zero
+					part.AssemblyAngularVelocity = Vector3.zero
+				end
+			end
+			
+			local primary = lastVehicle.PrimaryPart or lastVehicle:FindFirstChildWhichIsA("BasePart", true)
+			if primary then
+				primary.Anchored = true
+			end
+		end
+		
+		if hrp then
+			hrp.AssemblyLinearVelocity = Vector3.zero
+			hrp.AssemblyAngularVelocity = Vector3.zero
+		end
+
+		humanoid.Sit = false
+		task.wait(0.1)
+		
+		if hrp and lastVehicle then
+			local primary = lastVehicle.PrimaryPart or lastVehicle:FindFirstChildWhichIsA("BasePart", true)
+			if primary then
+				hrp.CFrame = primary.CFrame * CFrame.new(0, 5, 0)
+			end
+		end
+	end
+end
+
+local function getInVehicle()
+	if not lastVehicle or not lastVehicle.Parent then return end
+	local char = player.Character
+	if not char then return end
+	local humanoid = char:FindFirstChildOfClass("Humanoid")
+	local hrp = char:FindFirstChild("HumanoidRootPart")
+	if not hrp or not humanoid then return end
+	
+	local primary = lastVehicle.PrimaryPart or lastVehicle:FindFirstChildWhichIsA("BasePart", true)
+	if primary then
+		primary.Anchored = false
+	end
+
+	if humanoid.SeatPart then return end
+	
+	local seat = lastVehicle:FindFirstChildWhichIsA("VehicleSeat", true) or lastVehicle:FindFirstChildWhichIsA("Seat", true)
+	if seat then
+		hrp.CFrame = seat.CFrame + Vector3.new(0, 2, 0)
+		task.wait(0.1)
+		seat:Sit(humanoid)
+		task.wait(0.2)
+	end
+end
+
+local function getNearestWaypointIndex(waypoints, currentPos)
+	local closestIdx = 1
+	local minDist = math.huge
+	for i, wp in ipairs(waypoints) do
+		local dist = (Vector3.new(currentPos.X, wp.Y, currentPos.Z) - wp).Magnitude
+		if dist < minDist then
+			minDist = dist
+			closestIdx = i
+		end
+	end
+	return closestIdx
+end
+
+local function moveToPositionVelocity(targetPos)
+	local char = player.Character
+	if not char then return false, false end
+	
+	local humanoid = char:FindFirstChildOfClass("Humanoid")
+	local hrp = char:FindFirstChild("HumanoidRootPart")
+	if not hrp or not humanoid then return false, false end
+
+	local seat = humanoid.SeatPart
+	local vehicleModel = getVehicleModel(seat)
+	
+	local movePart = (seat and vehicleModel) and (vehicleModel.PrimaryPart or seat) or hrp
+	if not movePart then return false, false end
+
+	local floatPart = Instance.new("Part")
+	floatPart.Name = "AntiFall_FloatPlatform"
+	floatPart.Size = Vector3.new(30, 1, 30)
+	floatPart.Anchored = true
+	floatPart.CanCollide = true
+	floatPart.Transparency = 1
+	floatPart.Parent = workspace
+
+	local bodyVel = Instance.new("BodyVelocity")
+	bodyVel.MaxForce = Vector3.new(1e7, 1e7, 1e7)
+	bodyVel.Velocity = Vector3.zero
+	bodyVel.Parent = movePart
+
+	local bodyGyro = Instance.new("BodyGyro")
+	bodyGyro.MaxTorque = Vector3.new(1e7, 1e7, 1e7)
+	bodyGyro.P = 10000
+	bodyGyro.CFrame = movePart.CFrame
+	bodyGyro.Parent = movePart
+
+	local noclipConnection = RunService.Stepped:Connect(function()
+		if not isRunning then return end
+		if movePart and movePart.Parent then 
+			floatPart.CFrame = movePart.CFrame * CFrame.new(0, -3.5, 0) 
+		end
+		if player.Character then
+			for _, part in ipairs(player.Character:GetDescendants()) do
+				if part:IsA("BasePart") and part ~= floatPart then 
+					part.CanCollide = false 
+				end
+			end
+		end
+		if vehicleModel then
+			for _, part in ipairs(vehicleModel:GetDescendants()) do
+				if part:IsA("BasePart") and part ~= floatPart then 
+					part.CanCollide = false 
+				end
+			end
+		end
+	end)
+
+	local targetPosWithHeight = Vector3.new(targetPos.X, targetPos.Y + CONFIG.Height, targetPos.Z)
+	local arrived = false
+	local rubberbandDetected = false
+	local previousPos = movePart.Position
+
+	local stopThreshold = math.clamp(CONFIG.Speed * 0.04, 6, 15)
+
+	local renderConnection = RunService.Heartbeat:Connect(function()
+		if not isRunning or not movePart or not movePart.Parent then arrived = false return end
+
+		local currentPos = movePart.Position
+		local moveDelta = (currentPos - previousPos).Magnitude
+		local distToTarget = (targetPosWithHeight - currentPos).Magnitude
+
+		if moveDelta > 45 and distToTarget > 20 then
+			rubberbandDetected = true
+			bodyVel.Velocity = Vector3.zero
+			return
+		end
+		
+		previousPos = currentPos
+
+		if distToTarget <= stopThreshold then
+			arrived = true
+			return
+		end
+
+		local speedFactor = math.clamp(distToTarget / 40, 0.25, 1)
+		local currentSpeed = CONFIG.Speed * speedFactor
+		local direction = (targetPosWithHeight - currentPos)
+		
+		bodyVel.Velocity = direction.Unit * currentSpeed
+		bodyGyro.CFrame = CFrame.lookAt(currentPos, Vector3.new(targetPosWithHeight.X, currentPos.Y, targetPosWithHeight.Z))
+	end)
+
+	while isRunning and not arrived and not rubberbandDetected do
+		task.wait(0.01)
+	end
+
+	if noclipConnection then noclipConnection:Disconnect() end
+	if renderConnection then renderConnection:Disconnect() end
+	bodyVel:Destroy()
+	bodyGyro:Destroy()
+	floatPart:Destroy()
+
+	if movePart and movePart.Parent then
+		movePart.AssemblyLinearVelocity = Vector3.zero
+		movePart.AssemblyAngularVelocity = Vector3.zero
+	end
+
+	if player.Character then
+		for _, part in ipairs(player.Character:GetDescendants()) do
+			if part:IsA("BasePart") then part.CanCollide = true end
+		end
+	end
+
+	return arrived, rubberbandDetected
+end
+
+local function moveToTargetVelocity(targetPart)
+	if not targetPart then return false end
+	local arrived, rubberband = moveToPositionVelocity(targetPart.Position)
+	return arrived
+end
+
+local function tweenToInteract(targetPart)
+	local char = player.Character
+	if not char then return false end
+	local humanoid = char:FindFirstChildOfClass("Humanoid")
+	local hrp = char:FindFirstChild("HumanoidRootPart")
+	if not hrp or not humanoid then return false end
+
+	local seat = humanoid.SeatPart
+	local vehicleModel = getVehicleModel(seat)
+	local groundTargetCFrame = targetPart.CFrame + Vector3.new(0, 3, 0)
+
+	if seat and vehicleModel then
+		local duration = math.clamp((vehicleModel.PrimaryPart.Position - targetPart.Position).Magnitude / 80, 0.15, 0.8)
+		local cframeValue = Instance.new("CFrameValue")
+		cframeValue.Value = vehicleModel:GetPivot()
+
+		local tween = TweenService:Create(cframeValue, TweenInfo.new(duration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Value = groundTargetCFrame})
+		local conn = cframeValue.Changed:Connect(function(newCFrame)
+			if vehicleModel and vehicleModel.Parent then vehicleModel:PivotTo(newCFrame) end
+		end)
+
+		tween:Play()
+		task.wait(duration)
+		conn:Disconnect()
+		cframeValue:Destroy()
+
+		if CONFIG.TweenDelay > 0 then task.wait(CONFIG.TweenDelay) end
+		dismountVehicle()
+		return true
+	else
+		local duration = math.clamp((hrp.Position - targetPart.Position).Magnitude / 80, 0.15, 0.8)
+		local tween = TweenService:Create(hrp, TweenInfo.new(duration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {CFrame = groundTargetCFrame})
+		tween:Play()
+		task.wait(duration)
+
+		if CONFIG.TweenDelay > 0 then task.wait(CONFIG.TweenDelay) end
+		return true
+	end
+end
+
+local function goToTarget(targetPart)
+	local reached = moveToTargetVelocity(targetPart)
+	if not reached or not isRunning then return false end
+	return tweenToInteract(targetPart)
+end
+
+local function processWaypoints(waypoints, labelPrefix)
+	local currentIndex = 1
+
+	while isRunning and currentIndex <= #waypoints do
+		if currentIndex == 1 then getInVehicle() end
+		
+		drawForwardPath(waypoints, currentIndex)
+		
+		local targetPos = waypoints[currentIndex]
+		local arrived, rubberbandDetected = moveToPositionVelocity(targetPos)
+
+		if rubberbandDetected then
+			task.wait(0.3)
+
+			local char = player.Character
+			local hrp = char and char:FindFirstChild("HumanoidRootPart")
+			
+			if hrp then
+				local nearestIdx = getNearestWaypointIndex(waypoints, hrp.Position)
+				currentIndex = nearestIdx
+				
+				local safeTargetPos = waypoints[nearestIdx] + Vector3.new(0, CONFIG.Height, 0)
+				local movePart = hrp
+				
+				local humanoid = char:FindFirstChildOfClass("Humanoid")
+				if humanoid and humanoid.SeatPart then
+					local vModel = getVehicleModel(humanoid.SeatPart)
+					if vModel then movePart = vModel.PrimaryPart or humanoid.SeatPart end
+				end
+
+				local recoverTween = TweenService:Create(movePart, TweenInfo.new(0.5, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {CFrame = CFrame.new(safeTargetPos)})
+				recoverTween:Play()
+				recoverTween.Completed:Wait()
+				task.wait(0.1)
+			end
+		elseif arrived then
+			currentIndex = currentIndex + 1
+		end
+	end
+	clearWaylines()
+end
+
+--------------------------------------------------------------------
+-- ⚙️ INTERACT LOGIC
+--------------------------------------------------------------------
+local function interactWith(targetPart, prompt)
+	local activePrompt = prompt 
+		or (targetPart and targetPart:FindFirstChildOfClass("ProximityPrompt")) 
+		or (targetPart and targetPart.Parent and targetPart.Parent:FindFirstChildOfClass("ProximityPrompt")) 
+		or (targetPart and targetPart:FindFirstChildWhichIsA("ProximityPrompt", true))
+
+	if activePrompt then
+		activePrompt.HoldDuration = 0
+		
+		if fireproximityprompt then
+			fireproximityprompt(activePrompt)
+		else
+			pcall(function()
+				activePrompt:InputHoldBegin()
+				task.wait(0.01)
+				activePrompt:InputHoldEnd()
+			end)
+		end
+		return true
+	end
+
+	local clickDetector = (targetPart and targetPart:FindFirstChildOfClass("ClickDetector")) 
+		or (targetPart and targetPart.Parent and targetPart.Parent:FindFirstChildOfClass("ClickDetector")) 
+		or (targetPart and targetPart:FindFirstChildWhichIsA("ClickDetector", true))
+
+	if clickDetector and fireclickdetector then
+		fireclickdetector(clickDetector)
+		return true
+	end
+
+	return false
+end
+
+local function getProcessableItemCount()
+	local count = 0
+	if player:FindFirstChild("Backpack") then
+		for _, item in ipairs(player.Backpack:GetChildren()) do
+			if item:IsA("Tool") and not isProtectedItem(item.Name) then count = count + 1 end
+		end
+	end
+	local char = player.Character
+	if char then
+		for _, item in ipairs(char:GetChildren()) do
+			if item:IsA("Tool") and not isProtectedItem(item.Name) then count = count + 1 end
+		end
+	end
+	return count
+end
+
+local function getItemCount(itemName)
+	local count = 0
+	local key = string.lower(itemName)
+	if player:FindFirstChild("Backpack") then
+		for _, item in ipairs(player.Backpack:GetChildren()) do
+			if string.find(string.lower(item.Name), key) then count = count + 1 end
+		end
+	end
+	local char = player.Character
+	if char then
+		for _, item in ipairs(char:GetChildren()) do
+			if string.find(string.lower(item.Name), key) then count = count + 1 end
+		end
+	end
+	return count
+end
+
+--------------------------------------------------------------------
+-- 🔄 MAIN LOOP
+--------------------------------------------------------------------
+local function mainLoop()
+	local savedBuyPart, savedBuyPrompt = nil, nil
+
+	while isRunning do
+		if getItemCount(CONFIG.ItemName) < CONFIG.Amount then
+			if not savedBuyPart or not savedBuyPart.Parent then 
+				savedBuyPart, savedBuyPrompt = findTarget(CONFIG.ItemName) 
+			end
+
+			if savedBuyPart then
+				getInVehicle()
+				if goToTarget(savedBuyPart) then
+					local buyTimeout = 0
+					while isRunning and getItemCount(CONFIG.ItemName) < CONFIG.Amount and buyTimeout < 50 do
+						interactWith(savedBuyPart, savedBuyPrompt)
+						task.wait(0.08)
+						buyTimeout = buyTimeout + 1
+					end
+					getInVehicle()
+				end
+			else
+				task.wait(0.5)
+			end
+		end
+
+		if not isRunning then break end
+		processWaypoints(postBuyWaypoints, "Post-Buy Route")
+		if not isRunning then break end
+
+		if autoSell then
+			local lastBuyPos = postBuyWaypoints[#postBuyWaypoints]
+			local sellPart, sellPrompt = findNearestTargetToPos(CONFIG.SellName, lastBuyPos)
+			if not sellPart then 
+				sellPart, sellPrompt = findNearestTargetToPos("Smuggle", lastBuyPos) 
+			end
+
+			if sellPart then
+				getInVehicle()
+				if goToTarget(sellPart) then
+					local sellTimeout = 0
+					while isRunning and getItemCount(CONFIG.ItemName) > 0 and sellTimeout < 100 do
+						interactWith(sellPart, sellPrompt)
+						task.wait(0.15)
+						sellTimeout = sellTimeout + 1
+					end
+
+					getInVehicle()
+				end
+			else
+				task.wait(0.5)
+			end
+		end
+
+		if not isRunning then break end
+		processWaypoints(postSellWaypoints, "Post-Sell Route")
+		if not isRunning then break end
+
+		if autoLaunder then
+			local launderPart, launderPrompt = findTarget(CONFIG.LaunderName)
+			if launderPart then
+				getInVehicle()
+				if goToTarget(launderPart) then
+					local launderAttempts = 0
+					while isRunning and getProcessableItemCount() > 0 and launderAttempts < 60 do
+						interactWith(launderPart, launderPrompt)
+						task.wait(0.08)
+						launderAttempts = launderAttempts + 1
+					end
+					task.wait(0.1)
+					getInVehicle()
+				end
+			else
+				task.wait(0.5)
+			end
+		end
+		
+		task.wait(0.1)
+	end
+	clearWaylines()
+end
+
+--------------------------------------------------------------------
+-- 🎛️ LINORIA UI CONTROLS & BINDINGS
+--------------------------------------------------------------------
+
+-- Auto Farm Controls
+FarmGroup:AddToggle("AutoFarmToggle", {
+	Text = "Auto Farm",
+	Default = isRunning,
+	Callback = function(Value)
+		isRunning = Value
+		if isRunning then
+			task.spawn(mainLoop)
+		else
+			clearWaylines()
+		end
+	end
+})
+
+FarmGroup:AddToggle("AutoSellToggle", {
+	Text = "Auto Sell Goods",
+	Default = autoSell,
+	Callback = function(Value)
+		autoSell = Value
+	end
+})
+
+FarmGroup:AddToggle("AutoLaunderToggle", {
+	Text = "Auto Launder Cash",
+	Default = autoLaunder,
+	Callback = function(Value)
+		autoLaunder = Value
+	end
+})
+
+-- Farm Settings
+ConfigGroup:AddSlider("FlySpeedSlider", {
+	Text = "Fly Speed",
+	Default = CONFIG.Speed,
+	Min = 150,
+	Max = 300,
+	Rounding = 0,
+	Compact = false,
+	Callback = function(Value)
+		CONFIG.Speed = Value
+	end
+})
+
+ConfigGroup:AddSlider("TweenHeightSlider", {
+	Text = "Tween Height (Y)",
+	Default = CONFIG.Height,
+	Min = 1,
+	Max = 5,
+	Rounding = 1,
+	Compact = false,
+	Callback = function(Value)
+		CONFIG.Height = Value
+	end
+})
+
+ConfigGroup:AddSlider("TargetAmountSlider", {
+	Text = "Target Amount",
+	Default = CONFIG.Amount,
+	Min = 1,
+	Max = 5,
+	Rounding = 0,
+	Compact = false,
+	Callback = function(Value)
+		CONFIG.Amount = Value
+	end
+})
+
+ConfigGroup:AddSlider("TweenDelaySlider", {
+	Text = "Tween Delay (s)",
+	Default = CONFIG.TweenDelay,
+	Min = 0,
+	Max = 5,
+	Rounding = 1,
+	Compact = false,
+	Callback = function(Value)
+		CONFIG.TweenDelay = Value
+	end
+})
+
+ConfigGroup:AddDropdown("SelectItemDropdown", {
+	Values = {
+		"Crate Of Avacados",
+		"Wagyu Beef",
+		"Witches Brew",
+		"Fake Designer Sneakers",
+		"Fake Diamond Ring"
+	},
+	Default = 5,
+	Multi = false,
+	Text = "Select Item",
+	Callback = function(Value)
+		CONFIG.ItemName = Value
+	end
+})
+
+-- Performance Controls
+PerformanceGroup:AddToggle("BoostFPSToggle", {
+	Text = "Boost FPS",
+	Default = fpsBoostActive,
+	Callback = function(Value)
+		applyFPSBoost(Value)
+	end
+})
+
+PerformanceGroup:AddToggle("AntiPauseToggle", {
+	Text = "Anti Gameplay Paused",
+	Default = antiPauseActive,
+	Callback = function(Value)
+		applyAntiPause(Value)
+	end
+})
+
+PerformanceGroup:AddToggle("NoRenderToggle", {
+	Text = "No Render",
+	Default = noRenderActive,
+	Callback = function(Value)
+		applyNoRender(Value)
+	end
+})
+
+-- Visual Controls
+VisualGroup:AddToggle("ShowPathToggle", {
+	Text = "Show Path Line",
+	Default = showPathLine,
+	Callback = function(Value)
+		showPathLine = Value
+		if not showPathLine then
+			clearWaylines()
+		end
+	end
+})
+
+VisualGroup:AddSlider("PathGlowSizeSlider", {
+	Text = "Path Glow Size",
+	Default = pathGlowSize,
+	Min = 0.1,
+	Max = 3.0,
+	Rounding = 1,
+	Compact = false,
+	Callback = function(Value)
+		pathGlowSize = Value
+		updateActiveBeams()
+	end
+})
+
+VisualGroup:AddSlider("PathLengthSlider", {
+	Text = "Path Texture Length",
+	Default = pathLength,
+	Min = 0.5,
+	Max = 10.0,
+	Rounding = 1,
+	Compact = false,
+	Callback = function(Value)
+		pathLength = Value
+		updateActiveBeams()
+	end
+})
+
+VisualGroup:AddSlider("PathSpeedSlider", {
+	Text = "Path Texture Speed",
+	Default = pathSpeed,
+	Min = 0.0,
+	Max = 10.0,
+	Rounding = 1,
+	Compact = false,
+	Callback = function(Value)
+		pathSpeed = Value
+		updateActiveBeams()
+	end
+})
+
+VisualGroup:AddLabel("Path Gradient Colors")
+	:AddColorPicker("PathColorPicker1", {
+		Default = pathColor1,
+		Title = "Path Color 1",
+		Callback = function(Value)
+			pathColor1 = Value
+		end
+	})
+	:AddColorPicker("PathColorPicker2", {
+		Default = pathColor2,
+		Title = "Path Color 2",
+		Callback = function(Value)
+			pathColor2 = Value
+		end
+	})
+
+--------------------------------------------------------------------
+-- 🛠️ UI SETTINGS (LINORIA CONFIG & THEME MANAGER)
+--------------------------------------------------------------------
+local MenuGroup = Tabs["UI Settings"]:AddLeftGroupbox("Menu")
+
+MenuGroup:AddToggle("KeybindMenuOpen", {
+	Default = Library.KeybindFrame.Visible,
+	Text = "Open Keybind Menu",
+	Callback = function(Value)
+		Library.KeybindFrame.Visible = Value
+	end
+})
+
+MenuGroup:AddToggle("ShowCustomCursor", {
+	Text = "Custom Cursor",
+	Default = true,
+	Callback = function(Value)
+		Library.ShowCustomCursor = Value
+	end
+})
+
+MenuGroup:AddDivider()
+MenuGroup:AddLabel("Menu bind"):AddKeyPicker("MenuKeybind", { Default = "RightShift", NoUI = true, Text = "Menu keybind" })
+MenuGroup:AddButton("Unload", function() Library:Unload() end)
+
+Library.ToggleKeybind = Options.MenuKeybind
+
+ThemeManager:SetLibrary(Library)
+SaveManager:SetLibrary(Library)
+
+SaveManager:IgnoreThemeSettings()
+SaveManager:SetIgnoreIndexes({ "MenuKeybind" })
+
+ThemeManager:SetFolder("SanDiegoFarm")
+SaveManager:SetFolder("SanDiegoFarm/config")
+
+SaveManager:BuildConfigSection(Tabs["UI Settings"])
+ThemeManager:ApplyToTab(Tabs["UI Settings"])
+
+SaveManager:LoadAutoloadConfig()
