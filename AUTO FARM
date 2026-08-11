@@ -37,7 +37,7 @@ Library.ShowCustomCursor = true
 Library.NotifySide = "Left"
 
 local Window = Library:CreateWindow({
-	Title = "🌴 San Diego Auto Farm | v2         ",
+	Title = "🌴 San Diego Auto Farm | v2                    ",
 	Center = true,
 	AutoShow = true,
 	Resizable = true,
