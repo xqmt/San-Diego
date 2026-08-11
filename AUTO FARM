@@ -1,84 +1,123 @@
-local repo = "https://raw.githubusercontent.com/cloudsense-pub/UELinoriaLib/main/"
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local Lighting = game:GetService("Lighting")
 
-local Library = loadstring(game:HttpGet(repo .. "Library.lua"))()
-local ThemeManager = loadstring(game:HttpGet(repo .. "addons/ThemeManager.lua"))()
-local SaveManager = loadstring(game:HttpGet(repo .. "addons/SaveManager.lua"))()
+local cloneref = (cloneref or clonereference or function(instance) return instance end)
+local ReplicatedStorage = cloneref(game:GetService("ReplicatedStorage"))
+local HttpService = cloneref(game:GetService("HttpService"))
 
---------------------------------------------------------------------
--- 🎨 FORCE UI FONT TO CARTOON
---------------------------------------------------------------------
-Library.Font = Enum.Font.Cartoon
-
--- Override ฟังก์ชันปรับแต่งฟอนต์ของ LinoriaLib เพื่อบังคับใช้ Cartoon ทุกตำแหน่ง
-if Library.SetFont then
-	local oldSetFont = Library.SetFont
-	Library.SetFont = function(self, font)
-		return oldSetFont(self, Enum.Font.Cartoon)
-	end
-end
-
--- บังคับเปลี่ยนฟอนต์ของออบเจกต์ที่สร้างขึ้นมาใหม่ทั้งหมดใน Library
-local oldCreate = Library.Create
-if oldCreate then
-	Library.Create = function(self, instanceType, properties)
-		local instance = oldCreate(self, instanceType, properties)
-		if instance and (instance:IsA("TextLabel") or instance:IsA("TextButton") or instance:IsA("TextBox")) then
-			instance.Font = Enum.Font.Cartoon
+local WindUI
+do
+	local ok, result = pcall(function()
+		return require("./src/Init")
+	end)
+	if ok then
+		WindUI = result
+	else
+		if cloneref(RunService):IsStudio() then
+			WindUI = require(cloneref(ReplicatedStorage:WaitForChild("WindUI"):WaitForChild("Init")))
+		else
+			WindUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua"))()
 		end
-		return instance
 	end
 end
 
-local Options = getgenv().Options
-local Toggles = getgenv().Toggles
-
-Library.ShowToggleFrameInKeybinds = true
-Library.ShowCustomCursor = true
-Library.NotifySide = "Left"
-
-local Window = Library:CreateWindow({
-	Title = "🌴 San Diego Auto Farm | v2                                             ",
-	Center = true,
-	AutoShow = true,
-	Resizable = true,
-	ShowCustomCursor = true,
-	UnlockMouseWhileOpen = true,
-	NotifySide = "Left",
-	TabPadding = 8,
-	MenuFadeTime = 0.2
+--------------------------------------------------------------------
+-- 🎨 THEME INITIALIZATION
+--------------------------------------------------------------------
+WindUI:AddTheme({
+	Name = "CustomDark",
+	
+	Accent = Color3.fromHex("#9d69e9"),
+	Background = Color3.fromHex("#000000"),
+	BackgroundTransparency = 0,
+	Outline = Color3.fromHex("#FFFFFF"),
+	Text = Color3.fromHex("#FFFFFF"),
+	Placeholder = Color3.fromHex("#000000"),
+	Button = Color3.fromHex("#FFFFFF"),
+	Icon = Color3.fromHex("#9d69e9"),
+	
+	Hover = Color3.fromHex("#FFFFFF"),
+	
+	WindowBackground = Color3.fromHex("#000000"),
+	WindowShadow = Color3.fromHex("#9d69e9"),
+	
+	DialogBackground = Color3.fromHex("#000000"),
+	DialogBackgroundTransparency = 0,
+	DialogTitle = Color3.fromHex("#FFFFFF"),
+	DialogContent = Color3.fromHex("#FFFFFF"),
+	DialogIcon = Color3.fromHex("#9d69e9"),
+	
+	WindowTopbarButtonIcon = Color3.fromHex("#FFFFFF"),
+	WindowTopbarTitle = Color3.fromHex("#FFFFFF"),
+	WindowTopbarAuthor = Color3.fromHex("#FFFFFF"),
+	WindowTopbarIcon = Color3.fromHex("#FFFFFF"),
+	
+	TabBackground = Color3.fromHex("#000000"),
+	TabTitle = Color3.fromHex("#FFFFFF"),
+	TabIcon = Color3.fromHex("#9d69e9"),
+	
+	ElementBackground = Color3.fromHex("#000000"),
+	ElementTitle = Color3.fromHex("#FFFFFF"),
+	ElementDesc = Color3.fromHex("#a1a1aa"),
+	ElementIcon = Color3.fromHex("#9d69e9"),
+	
+	PopupBackground = Color3.fromHex("#FFFFFF"),
+	PopupBackgroundTransparency = 0,
+	PopupTitle = Color3.fromHex("#FFFFFF"),
+	PopupContent = Color3.fromHex("#FFFFFF"),
+	PopupIcon = Color3.fromHex("#9d69e9"),
+	
+	Toggle = Color3.fromHex("#9d69e9"),
+	ToggleBar = Color3.fromHex("#FFFFFF"),
+	
+	Checkbox = Color3.fromHex("#52525b"),
+	CheckboxIcon = Color3.fromHex("#FFFFFF"),
+	
+	Slider = Color3.fromHex("#9d69e9"),
+	SliderThumb = Color3.fromHex("#FFFFFF"),
 })
 
 --------------------------------------------------------------------
--- 📑 TABS & GROUPS
+-- 🪟 WINDOW INITIALIZATION
 --------------------------------------------------------------------
-local Tabs = {
-	Read = Window:AddTab("Read"),
-	Main = Window:AddTab("Auto Farm"),
-	Misc = Window:AddTab("Misc"),
-	["UI Settings"] = Window:AddTab("UI Settings"),
-}
+local Window = WindUI:CreateWindow({
+	Title = "🌴 San Diego Auto Farm",
+	Folder = "SanDiegoFarm",
+	Icon = "solar:folder-2-bold-duotone",
+	Theme = "CustomDark",
+	NewElements = true,
+	HideSearchBar = false,
+	OpenButton = {
+		Title = "Open Auto Farm UI",
+		CornerRadius = UDim.new(1, 0),
+		StrokeThickness = 3,
+		Enabled = true,
+		Draggable = true,
+		OnlyMobile = false,
+		Scale = 0.9,
+		Color = ColorSequence.new(
+			Color3.fromHex("#30FF6A"),
+			Color3.fromHex("#e7ff2f")
+		),
+	},
+	Topbar = {
+		Height = 44,
+		ButtonsType = "Mac",
+	},
+})
 
--- Read Tab
-local ReadGroup = Tabs.Read:AddLeftGroupbox("Information")
-ReadGroup:AddLabel("⚠️ Warning", true)
-ReadGroup:AddLabel("ℹ️ If you're laggy don't blame the script!!", true)
-
--- Main Tab Groups
-local FarmGroup = Tabs.Main:AddLeftGroupbox("Farm Controls")
-local ConfigGroup = Tabs.Main:AddRightGroupbox("Farm Settings")
-
--- Misc Tab Groups
-local PerformanceGroup = Tabs.Misc:AddLeftGroupbox("Performance & Protection")
-local VisualGroup = Tabs.Misc:AddRightGroupbox("Path Visualizer")
+Window:Tag({
+	Title = "v" .. WindUI.Version,
+	Icon = "github",
+	Color = Color3.fromHex("#9d69e9"),
+	Border = true,
+})
 
 --------------------------------------------------------------------
 -- ⚙️ VARIABLES & CONFIGS
 --------------------------------------------------------------------
-local Players = game:GetService("Players")
-local TweenService = game:GetService("TweenService")
-local RunService = game:GetService("RunService")
-local Lighting = game:GetService("Lighting")
-
 local player = Players.LocalPlayer
 
 local isRunning = false
@@ -93,7 +132,7 @@ local pathColor2 = Color3.fromHex("#FFFFFF")
 
 local pathGlowSize = 1.2
 local pathLength = 6.5
-local pathSpeed = 0
+local pathSpeed = 0.0
 
 local lastVehicle = nil
 
@@ -139,44 +178,25 @@ end
 
 -- 📌 WAYPOINTS ขาไป
 local postBuyWaypoints = {
-	Vector3.new(6848.1, 17.2, 41.7),
-	Vector3.new(6847.4, 17.2, 123.1),
-	Vector3.new(6677.9, 17.2, 139.1),
-	Vector3.new(3665.8, 17.2, 151.2),
-	Vector3.new(3448.5, 36.3, 206.6),
-	Vector3.new(3372.3, 29.4, 203.5),
-	Vector3.new(2379.2, 17.2, 401.0),
-	Vector3.new(1957.8, 38.8, 371.3),
-	Vector3.new(1081.6, 49.4, 459.8),
-	Vector3.new(996.0, 37.9, 439.4),
-	Vector3.new(665.9, 21.7, 364.1),
-	Vector3.new(85.0, 17.2, 379.3),
-	Vector3.new(51.5, 17.2, 421.6),
-	Vector3.new(59.1, 33.3, 566.1),
-	Vector3.new(-41.3, 33.2, 540.9),
-	Vector3.new(-83.3, 33.2, 429.4),
-	Vector3.new(-83.0, 49.2, 432.2)
+	Vector3.new(6848.1, 17.2, 41.7), Vector3.new(6847.4, 17.2, 123.1), Vector3.new(6677.9, 17.2, 139.1),
+	Vector3.new(3665.8, 17.2, 151.2), Vector3.new(3448.5, 36.3, 206.6), Vector3.new(3372.3, 29.4, 203.5),
+	Vector3.new(2379.2, 17.2, 401.0), Vector3.new(1957.8, 38.8, 371.3), Vector3.new(1081.6, 49.4, 459.8),
+	Vector3.new(996.0, 37.9, 439.4), Vector3.new(665.9, 21.7, 364.1), Vector3.new(85.0, 17.2, 379.3),
+	Vector3.new(51.5, 17.2, 421.6), Vector3.new(59.1, 33.3, 566.1), Vector3.new(-41.3, 33.2, 540.9),
+	Vector3.new(-83.3, 33.2, 429.4), Vector3.new(-83.0, 49.2, 432.2)
 }
 
 -- 📌 WAYPOINTS ขากลับ
 local postSellWaypoints = {
-	Vector3.new(-25.4, 49.3, 436.7),
-	Vector3.new(99.2, 24.7, 436.0),
-	Vector3.new(823.6, 25.8, 408.0),
-	Vector3.new(1161.3, 41.0, 399.0),
-	Vector3.new(1973.6, 36.7, 389.6),
-	Vector3.new(2879.1, 26.5, 367.4),
-	Vector3.new(3047.2, 21.6, 364.3),
-	Vector3.new(3349.9, 33.1, 323.4),
-	Vector3.new(3625.3, 26.5, 219.6),
-	Vector3.new(4459.7, 17.2, 152.0),
-	Vector3.new(6743.4, 17.2, 148.5),
-	Vector3.new(6848.8, 17.3, 75.7),
+	Vector3.new(-25.4, 49.3, 436.7), Vector3.new(99.2, 24.7, 436.0), Vector3.new(823.6, 25.8, 408.0),
+	Vector3.new(1161.3, 41.0, 399.0), Vector3.new(1973.6, 36.7, 389.6), Vector3.new(2879.1, 26.5, 367.4),
+	Vector3.new(3047.2, 21.6, 364.3), Vector3.new(3349.9, 33.1, 323.4), Vector3.new(3625.3, 26.5, 219.6),
+	Vector3.new(4459.7, 17.2, 152.0), Vector3.new(6743.4, 17.2, 148.5), Vector3.new(6848.8, 17.3, 75.7),
 	Vector3.new(6834.0, 17.4, -42.9)
 }
 
 --------------------------------------------------------------------
--- 🛣️ PATH LINE SYSTEM
+-- 🛣️ PATH RENDERER
 --------------------------------------------------------------------
 local pathFolder = workspace:FindFirstChild("AutoFarm_PathFolder") or Instance.new("Folder")
 pathFolder.Name = "AutoFarm_PathFolder"
@@ -192,9 +212,7 @@ local function clearWaylines()
 		pathAnimConnection = nil
 	end
 	for _, obj in ipairs(activePathObjects) do
-		if obj and obj.Parent then
-			obj:Destroy()
-		end
+		if obj and obj.Parent then obj:Destroy() end
 	end
 	activePathObjects = {}
 	activeBeamsList = {}
@@ -221,9 +239,7 @@ local function drawForwardPath(waypoints, currentIndex)
 	local hrp = char:FindFirstChild("HumanoidRootPart")
 	if not hrp then return end
 
-	local pointsToDraw = {}
-	table.insert(pointsToDraw, hrp.Position)
-
+	local pointsToDraw = { hrp.Position }
 	for i = currentIndex, #waypoints do
 		table.insert(pointsToDraw, waypoints[i])
 	end
@@ -231,8 +247,7 @@ local function drawForwardPath(waypoints, currentIndex)
 	activeBeamsList = {}
 
 	for i = 1, #pointsToDraw - 1 do
-		local pA = pointsToDraw[i]
-		local pB = pointsToDraw[i+1]
+		local pA, pB = pointsToDraw[i], pointsToDraw[i+1]
 
 		local partA = Instance.new("Part")
 		partA.Size = Vector3.new(0.1, 0.1, 0.1)
@@ -256,12 +271,10 @@ local function drawForwardPath(waypoints, currentIndex)
 		local beam = Instance.new("Beam")
 		beam.Attachment0 = attA
 		beam.Attachment1 = attB
-		
 		beam.Texture = "rbxassetid://446111271"
 		beam.TextureMode = Enum.TextureMode.Wrap
 		beam.TextureLength = pathLength
 		beam.TextureSpeed = pathSpeed
-		
 		beam.Width0 = pathGlowSize
 		beam.Width1 = pathGlowSize
 		beam.Transparency = NumberSequence.new(0)
@@ -305,9 +318,7 @@ local fpsConnections = {}
 
 local function stripCharacter(char)
 	if not char then return end
-	local children = char:GetChildren()
-	for i = #children, 1, -1 do
-		local item = children[i]
+	for _, item in ipairs(char:GetChildren()) do
 		if item:IsA("Accessory") or item:IsA("Clothing") or item:IsA("ShirtGraphic") or item:IsA("Shirt") or item:IsA("Pants") or item:IsA("CharacterMesh") then
 			pcall(function() item:Destroy() end)
 		end
@@ -347,9 +358,7 @@ local function applyFPSBoost(state)
 		
 		pcall(function() Lighting.Technology = Enum.Technology.Compatibility end)
 
-		local lightingChildren = Lighting:GetChildren()
-		for i = #lightingChildren, 1, -1 do
-			local child = lightingChildren[i]
+		for _, child in ipairs(Lighting:GetChildren()) do
 			if child:IsA("Sky") or child:IsA("Atmosphere") or child:IsA("PostEffect") or child:IsA("BloomEffect") or child:IsA("BlurEffect") or child:IsA("SunRaysEffect") then
 				pcall(function() child:Destroy() end)
 			end
@@ -357,17 +366,10 @@ local function applyFPSBoost(state)
 		
 		local darkSky = Instance.new("Sky")
 		darkSky.Name = "FPSBoostSky"
-		darkSky.SkyboxBk = "rbxassetid://0"
-		darkSky.SkyboxDn = "rbxassetid://0"
-		darkSky.SkyboxFt = "rbxassetid://0"
-		darkSky.SkyboxLf = "rbxassetid://0"
-		darkSky.SkyboxRt = "rbxassetid://0"
-		darkSky.SkyboxUp = "rbxassetid://0"
 		darkSky.SkyboxColor = Color3.fromRGB(10, 10, 10)
 		darkSky.Parent = Lighting
 
-		local descendants = workspace:GetDescendants()
-		for i = 1, #descendants do optimizeInst(descendants[i]) end
+		for _, v in ipairs(workspace:GetDescendants()) do optimizeInst(v) end
 
 		local connAdded = workspace.DescendantAdded:Connect(function(v)
 			if fpsBoostActive then task.wait() optimizeInst(v) end
@@ -397,7 +399,7 @@ local function applyFPSBoost(state)
 end
 
 --------------------------------------------------------------------
--- 🧠 TARGET & ROUTING HELPERS
+-- 🧠 FARMING LOGIC & ROUTING
 --------------------------------------------------------------------
 local function findTarget(keyword)
 	local key = string.lower(keyword)
@@ -469,11 +471,8 @@ local function dismountVehicle()
 					part.AssemblyAngularVelocity = Vector3.zero
 				end
 			end
-			
 			local primary = lastVehicle.PrimaryPart or lastVehicle:FindFirstChildWhichIsA("BasePart", true)
-			if primary then
-				primary.Anchored = true
-			end
+			if primary then primary.Anchored = true end
 		end
 		
 		if hrp then
@@ -486,9 +485,7 @@ local function dismountVehicle()
 		
 		if hrp and lastVehicle then
 			local primary = lastVehicle.PrimaryPart or lastVehicle:FindFirstChildWhichIsA("BasePart", true)
-			if primary then
-				hrp.CFrame = primary.CFrame * CFrame.new(0, 5, 0)
-			end
+			if primary then hrp.CFrame = primary.CFrame * CFrame.new(0, 3, 0) end
 		end
 	end
 end
@@ -502,9 +499,7 @@ local function getInVehicle()
 	if not hrp or not humanoid then return end
 	
 	local primary = lastVehicle.PrimaryPart or lastVehicle:FindFirstChildWhichIsA("BasePart", true)
-	if primary then
-		primary.Anchored = false
-	end
+	if primary then primary.Anchored = false end
 
 	if humanoid.SeatPart then return end
 	
@@ -570,16 +565,12 @@ local function moveToPositionVelocity(targetPos)
 		end
 		if player.Character then
 			for _, part in ipairs(player.Character:GetDescendants()) do
-				if part:IsA("BasePart") and part ~= floatPart then 
-					part.CanCollide = false 
-				end
+				if part:IsA("BasePart") and part ~= floatPart then part.CanCollide = false end
 			end
 		end
 		if vehicleModel then
 			for _, part in ipairs(vehicleModel:GetDescendants()) do
-				if part:IsA("BasePart") and part ~= floatPart then 
-					part.CanCollide = false 
-				end
+				if part:IsA("BasePart") and part ~= floatPart then part.CanCollide = false end
 			end
 		end
 	end)
@@ -643,12 +634,6 @@ local function moveToPositionVelocity(targetPos)
 	return arrived, rubberbandDetected
 end
 
-local function moveToTargetVelocity(targetPart)
-	if not targetPart then return false end
-	local arrived, rubberband = moveToPositionVelocity(targetPart.Position)
-	return arrived
-end
-
 local function tweenToInteract(targetPart)
 	local char = player.Character
 	if not char then return false end
@@ -658,7 +643,7 @@ local function tweenToInteract(targetPart)
 
 	local seat = humanoid.SeatPart
 	local vehicleModel = getVehicleModel(seat)
-	local groundTargetCFrame = targetPart.CFrame + Vector3.new(0, 3, 0)
+	local groundTargetCFrame = targetPart.CFrame + Vector3.new(0, 1.2, 0)
 
 	if seat and vehicleModel then
 		local duration = math.clamp((vehicleModel.PrimaryPart.Position - targetPart.Position).Magnitude / 80, 0.15, 0.8)
@@ -685,19 +670,19 @@ local function tweenToInteract(targetPart)
 		task.wait(duration)
 
 		if CONFIG.TweenDelay > 0 then task.wait(CONFIG.TweenDelay) end
+		dismountVehicle()
 		return true
 	end
 end
 
 local function goToTarget(targetPart)
-	local reached = moveToTargetVelocity(targetPart)
+	local reached = moveToPositionVelocity(targetPart.Position)
 	if not reached or not isRunning then return false end
 	return tweenToInteract(targetPart)
 end
 
 local function processWaypoints(waypoints, labelPrefix)
 	local currentIndex = 1
-
 	while isRunning and currentIndex <= #waypoints do
 		if currentIndex == 1 then getInVehicle() end
 		
@@ -708,7 +693,6 @@ local function processWaypoints(waypoints, labelPrefix)
 
 		if rubberbandDetected then
 			task.wait(0.3)
-
 			local char = player.Character
 			local hrp = char and char:FindFirstChild("HumanoidRootPart")
 			
@@ -737,9 +721,6 @@ local function processWaypoints(waypoints, labelPrefix)
 	clearWaylines()
 end
 
---------------------------------------------------------------------
--- ⚙️ INTERACT LOGIC
---------------------------------------------------------------------
 local function interactWith(targetPart, prompt)
 	local activePrompt = prompt 
 		or (targetPart and targetPart:FindFirstChildOfClass("ProximityPrompt")) 
@@ -748,7 +729,6 @@ local function interactWith(targetPart, prompt)
 
 	if activePrompt then
 		activePrompt.HoldDuration = 0
-		
 		if fireproximityprompt then
 			fireproximityprompt(activePrompt)
 		else
@@ -780,9 +760,8 @@ local function getProcessableItemCount()
 			if item:IsA("Tool") and not isProtectedItem(item.Name) then count = count + 1 end
 		end
 	end
-	local char = player.Character
-	if char then
-		for _, item in ipairs(char:GetChildren()) do
+	if player.Character then
+		for _, item in ipairs(player.Character:GetChildren()) do
 			if item:IsA("Tool") and not isProtectedItem(item.Name) then count = count + 1 end
 		end
 	end
@@ -797,18 +776,14 @@ local function getItemCount(itemName)
 			if string.find(string.lower(item.Name), key) then count = count + 1 end
 		end
 	end
-	local char = player.Character
-	if char then
-		for _, item in ipairs(char:GetChildren()) do
+	if player.Character then
+		for _, item in ipairs(player.Character:GetChildren()) do
 			if string.find(string.lower(item.Name), key) then count = count + 1 end
 		end
 	end
 	return count
 end
 
---------------------------------------------------------------------
--- 🔄 MAIN LOOP
---------------------------------------------------------------------
 local function mainLoop()
 	local savedBuyPart, savedBuyPrompt = nil, nil
 
@@ -821,6 +796,7 @@ local function mainLoop()
 			if savedBuyPart then
 				getInVehicle()
 				if goToTarget(savedBuyPart) then
+					dismountVehicle()
 					local buyTimeout = 0
 					while isRunning and getItemCount(CONFIG.ItemName) < CONFIG.Amount and buyTimeout < 50 do
 						interactWith(savedBuyPart, savedBuyPrompt)
@@ -848,13 +824,13 @@ local function mainLoop()
 			if sellPart then
 				getInVehicle()
 				if goToTarget(sellPart) then
+					dismountVehicle()
 					local sellTimeout = 0
 					while isRunning and getItemCount(CONFIG.ItemName) > 0 and sellTimeout < 100 do
 						interactWith(sellPart, sellPrompt)
 						task.wait(0.15)
 						sellTimeout = sellTimeout + 1
 					end
-
 					getInVehicle()
 				end
 			else
@@ -871,6 +847,7 @@ local function mainLoop()
 			if launderPart then
 				getInVehicle()
 				if goToTarget(launderPart) then
+					dismountVehicle()
 					local launderAttempts = 0
 					while isRunning and getProcessableItemCount() > 0 and launderAttempts < 60 do
 						interactWith(launderPart, launderPrompt)
@@ -891,233 +868,199 @@ local function mainLoop()
 end
 
 --------------------------------------------------------------------
--- 🎛️ LINORIA UI CONTROLS & BINDINGS
+-- 🖼️ UI SECTIONS & TABS
 --------------------------------------------------------------------
+local MainSection = Window:Section({ Title = "Main Features" })
+local SettingsSection = Window:Section({ Title = "Settings Farm" })
+local MiscSection = Window:Section({ Title = "Optimization" })
 
--- Auto Farm Controls
-FarmGroup:AddToggle("AutoFarmToggle", {
-	Text = "Auto Farm",
-	Default = isRunning,
-	Callback = function(Value)
-		isRunning = Value
-		if isRunning then
-			task.spawn(mainLoop)
-		else
-			clearWaylines()
-		end
-	end
-})
+-- 📌 Tab 1: Auto Farm
+do
+	local AutoFarmTab = MainSection:Tab({
+		Title = "Auto Farm",
+		Icon = "solar:home-2-bold",
+		Border = true,
+	})
 
-FarmGroup:AddToggle("AutoSellToggle", {
-	Text = "Auto Sell Goods",
-	Default = autoSell,
-	Callback = function(Value)
-		autoSell = Value
-	end
-})
+	AutoFarmTab:Toggle({
+		Title = "Start Auto Farm",
+		Desc = "",
+		Value = isRunning,
+		Callback = function(state)
+			isRunning = state
+			if isRunning then
+				task.spawn(mainLoop)
+			else
+				clearWaylines()
+			end
+		end,
+	})
 
-FarmGroup:AddToggle("AutoLaunderToggle", {
-	Text = "Auto Launder Cash",
-	Default = autoLaunder,
-	Callback = function(Value)
-		autoLaunder = Value
-	end
-})
+	AutoFarmTab:Space()
 
--- Farm Settings
-ConfigGroup:AddSlider("FlySpeedSlider", {
-	Text = "Fly Speed",
-	Default = CONFIG.Speed,
-	Min = 150,
-	Max = 300,
-	Rounding = 0,
-	Compact = false,
-	Callback = function(Value)
-		CONFIG.Speed = Value
-	end
-})
+	AutoFarmTab:Toggle({
+		Title = "Auto Sell Goods",
+		Value = autoSell,
+		Callback = function(state) autoSell = state end,
+	})
 
-ConfigGroup:AddSlider("TweenHeightSlider", {
-	Text = "Tween Height (Y)",
-	Default = CONFIG.Height,
-	Min = 1,
-	Max = 5,
-	Rounding = 1,
-	Compact = false,
-	Callback = function(Value)
-		CONFIG.Height = Value
-	end
-})
+	AutoFarmTab:Space()
 
-ConfigGroup:AddSlider("TargetAmountSlider", {
-	Text = "Target Amount",
-	Default = CONFIG.Amount,
-	Min = 1,
-	Max = 5,
-	Rounding = 0,
-	Compact = false,
-	Callback = function(Value)
-		CONFIG.Amount = Value
-	end
-})
+	AutoFarmTab:Toggle({
+		Title = "Auto Launder Cash",
+		Value = autoLaunder,
+		Callback = function(state) autoLaunder = state end,
+	})
 
-ConfigGroup:AddSlider("TweenDelaySlider", {
-	Text = "Tween Delay (s)",
-	Default = CONFIG.TweenDelay,
-	Min = 0,
-	Max = 5,
-	Rounding = 1,
-	Compact = false,
-	Callback = function(Value)
-		CONFIG.TweenDelay = Value
-	end
-})
+	AutoFarmTab:Space()
 
-ConfigGroup:AddDropdown("SelectItemDropdown", {
-	Values = {
-		"Crate Of Avacados",
-		"Wagyu Beef",
-		"Witches Brew",
-		"Fake Designer Sneakers",
-		"Fake Diamond Ring"
-	},
-	Default = 5,
-	Multi = false,
-	Text = "Select Item",
-	Callback = function(Value)
-		CONFIG.ItemName = Value
-	end
-})
+	AutoFarmTab:Dropdown({
+		Title = "Select Item to Farm",
+		Values = {
+			"Crate Of Avacados",
+			"Wagyu Beef",
+			"Witches Brew",
+			"Fake Designer Sneakers",
+			"Fake Diamond Ring"
+		},
+		Value = CONFIG.ItemName,
+		Callback = function(selected) CONFIG.ItemName = selected end,
+	})
+end
 
--- Performance Controls
-PerformanceGroup:AddToggle("BoostFPSToggle", {
-	Text = "Boost FPS",
-	Default = fpsBoostActive,
-	Callback = function(Value)
-		applyFPSBoost(Value)
-	end
-})
+-- 📌 Tab 2: Configs
+do
+	local FarmSettingsTab = SettingsSection:Tab({
+		Title = "Farm Settings",
+		Icon = "solar:slider-minimalistic-horizontal-bold",
+		Border = true,
+	})
 
-PerformanceGroup:AddToggle("AntiPauseToggle", {
-	Text = "Anti Gameplay Paused",
-	Default = antiPauseActive,
-	Callback = function(Value)
-		applyAntiPause(Value)
-	end
-})
+	FarmSettingsTab:Slider({
+		Title = "Speed",
+		Step = 5,
+		Value = { Min = 150, Max = 300, Default = CONFIG.Speed },
+		Callback = function(value) CONFIG.Speed = value end,
+	})
 
-PerformanceGroup:AddToggle("NoRenderToggle", {
-	Text = "No Render",
-	Default = noRenderActive,
-	Callback = function(Value)
-		applyNoRender(Value)
-	end
-})
+	FarmSettingsTab:Space()
 
--- Visual Controls
-VisualGroup:AddToggle("ShowPathToggle", {
-	Text = "Show Path Line",
-	Default = showPathLine,
-	Callback = function(Value)
-		showPathLine = Value
-		if not showPathLine then
-			clearWaylines()
-		end
-	end
-})
+	FarmSettingsTab:Slider({
+		Title = "Tween Height (Y)",
+		Step = 0.1,
+		Value = { Min = 1, Max = 5, Default = CONFIG.Height },
+		Callback = function(value) CONFIG.Height = value end,
+	})
 
-VisualGroup:AddSlider("PathGlowSizeSlider", {
-	Text = "Path Glow Size",
-	Default = pathGlowSize,
-	Min = 0.1,
-	Max = 3.0,
-	Rounding = 1,
-	Compact = false,
-	Callback = function(Value)
-		pathGlowSize = Value
-		updateActiveBeams()
-	end
-})
+	FarmSettingsTab:Space()
 
-VisualGroup:AddSlider("PathLengthSlider", {
-	Text = "Path Texture Length",
-	Default = pathLength,
-	Min = 0.5,
-	Max = 10.0,
-	Rounding = 1,
-	Compact = false,
-	Callback = function(Value)
-		pathLength = Value
-		updateActiveBeams()
-	end
-})
+	FarmSettingsTab:Slider({
+		Title = "Target Amount",
+		Step = 1,
+		Value = { Min = 1, Max = 5, Default = CONFIG.Amount },
+		Callback = function(value) CONFIG.Amount = value end,
+	})
 
-VisualGroup:AddSlider("PathSpeedSlider", {
-	Text = "Path Texture Speed",
-	Default = pathSpeed,
-	Min = 0.0,
-	Max = 10.0,
-	Rounding = 1,
-	Compact = false,
-	Callback = function(Value)
-		pathSpeed = Value
-		updateActiveBeams()
-	end
-})
+	FarmSettingsTab:Space()
 
-VisualGroup:AddLabel("Path Gradient Colors")
-	:AddColorPicker("PathColorPicker1", {
+	FarmSettingsTab:Slider({
+		Title = "Tween Delay (s)",
+		Step = 0.1,
+		Value = { Min = 0, Max = 5, Default = CONFIG.TweenDelay },
+		Callback = function(value) CONFIG.TweenDelay = value end,
+	})
+end
+
+-- 📌 Tab 3: Visual & Misc
+do
+	local MiscTab = MiscSection:Tab({
+		Title = "Visual & Optimization",
+		Icon = "solar:file-text-bold",
+		Border = true,
+	})
+
+	MiscTab:Toggle({
+		Title = "Boost FPS",
+		Value = fpsBoostActive,
+		Callback = function(state) applyFPSBoost(state) end,
+	})
+
+	MiscTab:Space()
+
+	MiscTab:Toggle({
+		Title = "Anti Gameplay Paused",
+		Value = antiPauseActive,
+		Callback = function(state) applyAntiPause(state) end,
+	})
+
+	MiscTab:Space()
+
+	MiscTab:Toggle({
+		Title = "No Render",
+		Value = noRenderActive,
+		Callback = function(state) applyNoRender(state) end,
+	})
+
+	MiscTab:Space()
+
+	MiscTab:Toggle({
+		Title = "Show Path Line",
+		Value = showPathLine,
+		Callback = function(state)
+			showPathLine = state
+			if not showPathLine then clearWaylines() end
+		end,
+	})
+
+	MiscTab:Space()
+
+	MiscTab:Slider({
+		Title = "Path Glow Size",
+		Step = 0.1,
+		Value = { Min = 0.1, Max = 3.0, Default = pathGlowSize },
+		Callback = function(value)
+			pathGlowSize = value
+			updateActiveBeams()
+		end,
+	})
+
+	MiscTab:Space()
+
+	MiscTab:Slider({
+		Title = "Path Texture Length",
+		Step = 0.1,
+		Value = { Min = 0.5, Max = 10.0, Default = pathLength },
+		Callback = function(value)
+			pathLength = value
+			updateActiveBeams()
+		end,
+	})
+
+	MiscTab:Space()
+
+	MiscTab:Slider({
+		Title = "Path Texture Speed",
+		Step = 0.1,
+		Value = { Min = 0.0, Max = 10.0, Default = pathSpeed },
+		Callback = function(value)
+			pathSpeed = value
+			updateActiveBeams()
+		end,
+	})
+
+	MiscTab:Space()
+
+	MiscTab:Colorpicker({
+		Title = "Path Gradient Color 1",
 		Default = pathColor1,
-		Title = "Path Color 1",
-		Callback = function(Value)
-			pathColor1 = Value
-		end
+		Callback = function(color) pathColor1 = color end,
 	})
-	:AddColorPicker("PathColorPicker2", {
+
+	MiscTab:Space()
+
+	MiscTab:Colorpicker({
+		Title = "Path Gradient Color 2",
 		Default = pathColor2,
-		Title = "Path Color 2",
-		Callback = function(Value)
-			pathColor2 = Value
-		end
+		Callback = function(color) pathColor2 = color end,
 	})
-
---------------------------------------------------------------------
--- 🛠️ UI SETTINGS (LINORIA CONFIG & THEME MANAGER)
---------------------------------------------------------------------
-local MenuGroup = Tabs["UI Settings"]:AddLeftGroupbox("Menu")
-
-MenuGroup:AddToggle("KeybindMenuOpen", {
-	Default = Library.KeybindFrame.Visible,
-	Text = "Open Keybind Menu",
-	Callback = function(Value)
-		Library.KeybindFrame.Visible = Value
-	end
-})
-
-MenuGroup:AddToggle("ShowCustomCursor", {
-	Text = "Custom Cursor",
-	Default = true,
-	Callback = function(Value)
-		Library.ShowCustomCursor = Value
-	end
-})
-
-MenuGroup:AddDivider()
-MenuGroup:AddLabel("Menu bind"):AddKeyPicker("MenuKeybind", { Default = "RightShift", NoUI = true, Text = "Menu keybind" })
-MenuGroup:AddButton("Unload", function() Library:Unload() end)
-
-Library.ToggleKeybind = Options.MenuKeybind
-
-ThemeManager:SetLibrary(Library)
-SaveManager:SetLibrary(Library)
-
-SaveManager:IgnoreThemeSettings()
-SaveManager:SetIgnoreIndexes({ "MenuKeybind" })
-
-ThemeManager:SetFolder("SanDiegoFarm")
-SaveManager:SetFolder("SanDiegoFarm/config")
-
-SaveManager:BuildConfigSection(Tabs["UI Settings"])
-ThemeManager:ApplyToTab(Tabs["UI Settings"])
-
-SaveManager:LoadAutoloadConfig()
+end
