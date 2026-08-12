@@ -963,7 +963,7 @@ end
 do
 	local FarmSettingsTab = SettingsSection:Tab({
 		Title = "Farm Settings",
-		Icon = "solar:settings-outline",
+		Icon = "solar:settings-bold",
 		Border = true,
 	})
 
@@ -1026,7 +1026,7 @@ end
 do
 	local MiscTab = MiscSection:Tab({
 		Title = "Visual & Optimization",
-		Icon = "solar:recive-twice-square-linear",
+		Icon = "solar:list-bold-duotone",
 		Border = true,
 	})
 
