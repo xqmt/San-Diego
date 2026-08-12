@@ -31,7 +31,7 @@ WindUI:AddTheme({
 	Accent = Color3.fromHex("#9d69e9"),
 	Background = Color3.fromHex("#000000"),
 	BackgroundTransparency = 0,
-	Outline = Color3.fromHex("#FFFFFF"),
+	Outline = Color3.fromHex("#000000"),
 	Text = Color3.fromHex("#FFFFFF"),
 	Placeholder = Color3.fromHex("#000000"),
 	Button = Color3.fromHex("#FFFFFF"),
@@ -78,6 +78,14 @@ local Window = WindUI:CreateWindow({
 	Theme = "CustomDark",
 	NewElements = true,
 	HideSearchBar = true,
+    User = {
+        Enabled = true,
+        Anonymous = false,
+        Callback = function()
+            print("clicked")
+        end,
+    },
+    
 	OpenButton = {
 		Title = "Open Auto Farm UI",
 		CornerRadius = UDim.new(1, 0),
