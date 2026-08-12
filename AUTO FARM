@@ -115,6 +115,8 @@ local fpsBoostActive = false
 local antiPauseActive = false
 local noRenderActive = false
 local showPathLine = true
+local showWaypointNotify = true
+local enableSellCooldown = true -- 📌 ตัวแปร เปิด/ปิด Sell Cooldown
 local pathColor1 = Color3.fromHex("#5865F2")
 local pathColor2 = Color3.fromHex("#FFFFFF")
 local pathGlowSize = 1.2
@@ -139,6 +141,19 @@ local PROTECTED_ITEMS = {
 
 local function isProtectedItem(itemName)
 	return PROTECTED_ITEMS[string.lower(itemName)] == true
+end
+
+local function notifyWaypoint(title, desc, duration)
+	if showWaypointNotify and WindUI then
+		pcall(function()
+			WindUI:Notify({
+				Title = title,
+				Content = desc,
+				Duration = duration or 1.5,
+				Icon = "solar:navigation-bold-duotone"
+			})
+		end)
+	end
 end
 
 local function applyAntiPause(state)
@@ -555,7 +570,7 @@ local function moveToPositionVelocity(targetPos)
 	local arrived = false
 	local rubberbandDetected = false
 	local previousPos = movePart.Position
-	local stopThreshold = math.clamp(CONFIG.Speed * 0.08, 12, 25) -- ขยายพื้นที่เช็คระยะทางเพื่อให้ผ่าน Waypoint ได้ลื่นไหลที่สุด
+	local stopThreshold = math.clamp(CONFIG.Speed * 0.08, 12, 25)
 
 	local renderConnection = RunService.Heartbeat:Connect(function()
 		if not isRunning or not movePart or not movePart.Parent then arrived = false return end
@@ -584,7 +599,7 @@ local function moveToPositionVelocity(targetPos)
 	end)
 
 	while isRunning and not arrived and not rubberbandDetected do
-		task.wait() -- รอน้อยที่สุดระดับ Single Frame ป้องกันอาการค้างสะอึก
+		task.wait()
 	end
 
 	if noclipConnection then noclipConnection:Disconnect() end
@@ -662,6 +677,8 @@ local function processWaypoints(waypoints, labelPrefix)
 		
 		drawForwardPath(waypoints, currentIndex)
 		
+		notifyWaypoint(labelPrefix or "Moving", string.format("Waypoint %d/%d", currentIndex, #waypoints), 1.2)
+		
 		local targetPos = waypoints[currentIndex]
 		local arrived, rubberbandDetected = moveToPositionVelocity(targetPos)
 
@@ -688,6 +705,18 @@ local function processWaypoints(waypoints, labelPrefix)
 				recoverTween.Completed:Wait()
 			end
 		elseif arrived then
+			-- 📌 จุดเช็ค Waypoint 15 ขาไปสำหรับชะลอความเร็วและสุ่มเวลาหน่วง Sell Cooldown (ทำงานเมื่อเปิด enableSellCooldown)
+			if enableSellCooldown and waypoints == postBuyWaypoints and currentIndex == 15 then
+				local oldSpeed = CONFIG.Speed
+				CONFIG.Speed = 25
+				local cdWait = math.random(50, 60) / 10
+				
+				notifyWaypoint("Sell Delay", string.format("Waiting sell cooldown... (%.1fs)", cdWait), cdWait)
+				
+				task.wait(cdWait)
+				CONFIG.Speed = oldSpeed
+			end
+			
 			currentIndex = currentIndex + 1
 		end
 	end
@@ -852,7 +881,7 @@ end
 --------------------------------------------------------------------
 local MainSection = Window:Section({ Title = "Main Features" })
 local SettingsSection = Window:Section({ Title = "Settings Farm" })
-local MiscSection = Window:Section({ Title = "Optimization" })
+local MiscSection = Window:Section({ Title = "Misc" })
 
 -- 📌 Tab 1: Auto Farm
 do
@@ -915,6 +944,26 @@ do
 		Icon = "solar:settings-outline",
 		Border = true,
 	})
+
+	-- 📌 เปิด/ปิด Waypoint Notification
+	FarmSettingsTab:Toggle({
+		Title = "Show Waypoint Notify",
+		Desc = "Show notification for Waypoint & Waiting Sell Cooldown",
+		Value = showWaypointNotify,
+		Callback = function(state) showWaypointNotify = state end,
+	})
+
+	FarmSettingsTab:Space()
+
+	-- 📌 เปิด/ปิด Sell Cooldown
+	FarmSettingsTab:Toggle({
+		Title = "Waiting Sell Cooldown",
+		Desc = "Slow down and delay at Waypoint 15 before selling",
+		Value = enableSellCooldown,
+		Callback = function(state) enableSellCooldown = state end,
+	})
+
+	FarmSettingsTab:Space()
 
 	FarmSettingsTab:Slider({
 		Title = "Speed",
