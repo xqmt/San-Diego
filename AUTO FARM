@@ -92,14 +92,14 @@ local Window = WindUI:CreateWindow({
 	OpenButton = {
 		Title = "Open Auto Farm UI",
 		CornerRadius = UDim.new(1, 0),
-		StrokeThickness = 3,
+		StrokeThickness = 2.5,
 		Enabled = true,
 		Draggable = true,
 		OnlyMobile = false,
-		Scale = 0.9,
+		Scale = 0.8,
 		Color = ColorSequence.new(
-			Color3.fromHex("#30FF6A"),
-			Color3.fromHex("#e7ff2f")
+			Color3.fromHex("#9d69e9"),
+			Color3.fromHex("#000000")
 		),
 	},
 	Topbar = {
