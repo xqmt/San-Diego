@@ -939,7 +939,7 @@ do
 	FarmSettingsTab:Slider({
 		Title = "Speed",
 		Step = 5,
-		Value = { Min = 150, Max = 300, Default = CONFIG.Speed },
+		Value = { Min = 150, Max = 310, Default = CONFIG.Speed },
 		Callback = function(value) CONFIG.Speed = value end,
 	})
 
