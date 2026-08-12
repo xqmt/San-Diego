@@ -706,7 +706,7 @@ local function processWaypoints(waypoints, labelPrefix)
 			end
 		elseif arrived then
 			-- 📌 จุดเช็ค Waypoint 15 ขาไปสำหรับชะลอความเร็วและสุ่มเวลาหน่วง Sell Cooldown (ทำงานเมื่อเปิด enableSellCooldown)
-			if enableSellCooldown and waypoints == postBuyWaypoints and currentIndex == 15 then
+			if enableSellCooldown and waypoints == postBuyWaypoints and currentIndex == 16 then
 				local oldSpeed = CONFIG.Speed
 				CONFIG.Speed = 25
 				local cdWait = math.random(50, 60) / 10
