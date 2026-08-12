@@ -85,7 +85,7 @@ WindUI:AddTheme({
 local Window = WindUI:CreateWindow({
 	Title = "🌴 San Diego Auto Farm",
 	Folder = "SanDiegoFarm",
-	Icon = "solar:folder-2-bold-duotone",
+	Icon = "solar:accumulator-outline",
 	Theme = "CustomDark",
 	NewElements = true,
 	HideSearchBar = false,
@@ -878,7 +878,7 @@ local MiscSection = Window:Section({ Title = "Optimization" })
 do
 	local AutoFarmTab = MainSection:Tab({
 		Title = "Auto Farm",
-		Icon = "solar:home-2-bold",
+		Icon = "solar:palette-round-bold-duotone",
 		Border = true,
 	})
 
@@ -932,7 +932,7 @@ end
 do
 	local FarmSettingsTab = SettingsSection:Tab({
 		Title = "Farm Settings",
-		Icon = "solar:slider-minimalistic-horizontal-bold",
+		Icon = "solar:settings-outline",
 		Border = true,
 	})
 
@@ -975,7 +975,7 @@ end
 do
 	local MiscTab = MiscSection:Tab({
 		Title = "Visual & Optimization",
-		Icon = "solar:file-text-bold",
+		Icon = "solar:recive-twice-square-linear",
 		Border = true,
 	})
 
