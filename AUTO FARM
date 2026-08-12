@@ -78,14 +78,13 @@ local Window = WindUI:CreateWindow({
 	Theme = "CustomDark",
 	NewElements = true,
 	HideSearchBar = true,
-    User = {
-        Enabled = true,
-        Anonymous = false,
-        Callback = function()
-            print("clicked")
-        end,
-    },
-    
+	User = {
+		Enabled = true,
+		Anonymous = false,
+		Callback = function()
+			print("clicked")
+		end,
+	},
 	OpenButton = {
 		Title = "Open Auto Farm UI",
 		CornerRadius = UDim.new(1, 0),
@@ -99,7 +98,6 @@ local Window = WindUI:CreateWindow({
 			Color3.fromHex("#000000")
 		),
 	},
-    
 })
 
 local function getExecutor()
@@ -136,9 +134,10 @@ local autoLaunder = true
 local fpsBoostActive = false
 local antiPauseActive = false
 local noRenderActive = false
+local mapTransparentActive = false
 local showPathLine = true
 local showWaypointNotify = true
-local enableSellCooldown = true -- 📌 ตัวแปร เปิด/ปิด Sell Cooldown
+local enableSellCooldown = true
 local pathColor1 = Color3.fromHex("#5865F2")
 local pathColor2 = Color3.fromHex("#FFFFFF")
 local pathGlowSize = 1.2
@@ -146,8 +145,17 @@ local pathLength = 6.5
 local pathSpeed = 0.0
 local lastVehicle = nil
 
+-- Name Spoof Variables (Locked to "Unknown")
+local nameSpoofActive = false
+local SPOOF_NAME = "$nknown?-94'7!/"
+local originalName = player.Name
+local originalDisplayName = player.DisplayName
+
+local originalTransparencies = {}
+local mapTransConnAdded = nil
+
 local CONFIG = {
-	Speed = 250,
+	Speed = 300,
 	Height = 2.5,
 	Amount = 5,
 	TweenDelay = 0,
@@ -178,6 +186,67 @@ local function notifyWaypoint(title, desc, duration)
 	end
 end
 
+--------------------------------------------------------------------
+-- 🎭 FIXED NAME SPOOFER FUNCTIONALITY
+--------------------------------------------------------------------
+local function applyNameSpoof()
+	if not nameSpoofActive then return end
+
+	local targetName = SPOOF_NAME
+
+	-- 1. เปลี่ยน DisplayName ระดับ Player
+	pcall(function()
+		player.DisplayName = targetName
+	end)
+
+	-- 2. เปลี่ยน Humanoid DisplayName
+	local char = player.Character
+	if char then
+		local humanoid = char:FindFirstChildOfClass("Humanoid")
+		if humanoid and humanoid.Health > 0 then
+			pcall(function()
+				humanoid.DisplayName = targetName
+			end)
+		end
+
+		-- 3. ค้นหา TextLabel หรือ UI บนหัวตัวละคร
+		for _, v in ipairs(char:GetDescendants()) do
+			if v:IsA("TextLabel") or v:IsA("TextButton") then
+				pcall(function()
+					if string.find(v.Text, originalName) or string.find(v.Text, originalDisplayName) then
+						v.Text = string.gsub(v.Text, originalName, targetName)
+						v.Text = string.gsub(v.Text, originalDisplayName, targetName)
+					end
+				end)
+			end
+		end
+	end
+end
+
+-- เมื่อเกิดใหม่ (Respawn)
+player.CharacterAdded:Connect(function(char)
+	if nameSpoofActive then
+		local humanoid = char:WaitForChild("Humanoid", 10)
+		if humanoid then
+			task.wait(0.5) -- รอให้อุปกรณ์และ UI โหลดสมบูรณ์ก่อนเปลี่ยนชื่อ
+			applyNameSpoof()
+		end
+	end
+end)
+
+-- ลูปตรวจสอบสม่ำเสมออย่างปลอดภัย
+task.spawn(function()
+	while true do
+		task.wait(1.5)
+		if nameSpoofActive then
+			local char = player.Character
+			if char and char:FindFirstChildOfClass("Humanoid") then
+				applyNameSpoof()
+			end
+		end
+	end
+end)
+
 local function applyAntiPause(state)
 	antiPauseActive = state
 	if state then
@@ -196,6 +265,45 @@ local function applyNoRender(state)
 		RunService:Set3dRenderingEnabled(false)
 	else
 		RunService:Set3dRenderingEnabled(true)
+	end
+end
+
+local function applyMapTransparency(state)
+	mapTransparentActive = state
+	if state then
+		originalTransparencies = {}
+		local descendants = workspace:GetDescendants()
+		for i = 1, #descendants do
+			local v = descendants[i]
+			if v:IsA("BasePart") and not v:IsDescendantOf(player.Character or workspace) then
+				if not string.find(v:GetFullName(), "AutoFarm_PathFolder") then
+					originalTransparencies[v] = v.Transparency
+					v.Transparency = 1
+				end
+			end
+		end
+
+		mapTransConnAdded = workspace.DescendantAdded:Connect(function(v)
+			if mapTransparentActive and v:IsA("BasePart") then
+				if not (player.Character and v:IsDescendantOf(player.Character)) and not string.find(v:GetFullName(), "AutoFarm_PathFolder") then
+					originalTransparencies[v] = v.Transparency
+					v.Transparency = 1
+				end
+			end
+		end)
+	else
+		if mapTransConnAdded then
+			mapTransConnAdded:Disconnect()
+			mapTransConnAdded = nil
+		end
+		for part, originalTrans in pairs(originalTransparencies) do
+			if part and part.Parent then
+				pcall(function()
+					part.Transparency = originalTrans
+				end)
+			end
+		end
+		originalTransparencies = {}
 	end
 end
 
@@ -328,7 +436,7 @@ local function drawForwardPath(waypoints, currentIndex)
 end
 
 --------------------------------------------------------------------
--- ⚡ FPS BOOST
+-- ⚡ HIGH-PERFORMANCE FPS BOOST
 --------------------------------------------------------------------
 local originalLightingSettings = {}
 local fpsConnections = {}
@@ -349,12 +457,17 @@ local function optimizeInst(v)
 			v.Material = Enum.Material.SmoothPlastic
 			v.CastShadow = false
 			v.Reflectance = 0
+			v.CanTouch = false
 		elseif v:IsA("Decal") or v:IsA("Texture") then
 			v:Destroy()
-		elseif v:IsA("ParticleEmitter") or v:IsA("Trail") or v:IsA("Smoke") or v:IsA("Fire") or v:IsA("Sparkles") then
+		elseif v:IsA("ParticleEmitter") or v:IsA("Trail") or v:IsA("Smoke") or v:IsA("Fire") or v:IsA("Sparkles") or v:IsA("Beam") then
 			v.Enabled = false
 		elseif v:IsA("Light") then
 			v.Enabled = false
+		elseif v:IsA("PostEffect") or v:IsA("BloomEffect") or v:IsA("BlurEffect") or v:IsA("SunRaysEffect") or v:IsA("DepthOfFieldEffect") then
+			v.Enabled = false
+		elseif v:IsA("Sound") then
+			v:Stop()
 		end
 	end)
 end
@@ -370,7 +483,7 @@ local function applyFPSBoost(state)
 
 		Lighting.GlobalShadows = false
 		Lighting.OutdoorAmbient = Color3.fromRGB(0, 0, 0)
-		Lighting.Ambient = Color3.fromRGB(15, 15, 15)
+		Lighting.Ambient = Color3.fromRGB(0, 0, 0)
 		Lighting.FogEnd = 9e9
 		
 		pcall(function() Lighting.Technology = Enum.Technology.Compatibility end)
@@ -380,16 +493,34 @@ local function applyFPSBoost(state)
 				pcall(function() child:Destroy() end)
 			end
 		end
-		
-		local darkSky = Instance.new("Sky")
-		darkSky.Name = "FPSBoostSky"
-		darkSky.SkyboxColor = Color3.fromRGB(10, 10, 10)
-		darkSky.Parent = Lighting
 
-		for _, v in ipairs(workspace:GetDescendants()) do optimizeInst(v) end
+		if workspace.Terrain then
+			pcall(function()
+				workspace.Terrain.WaterWaveSize = 0
+				workspace.Terrain.WaterWaveSpeed = 0
+				workspace.Terrain.WaterReflectance = 0
+				workspace.Terrain.WaterTransparency = 0
+				workspace.Terrain.Decoration = false
+			end)
+		end
+
+		pcall(function()
+			settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
+			settings().Rendering.MeshPartDetailLevel = Enum.MeshPartDetailLevel.Level04
+		end)
+
+		local descendants = workspace:GetDescendants()
+		task.spawn(function()
+			for i = 1, #descendants do
+				optimizeInst(descendants[i])
+				if i % 300 == 0 then task.wait() end
+			end
+		end)
 
 		local connAdded = workspace.DescendantAdded:Connect(function(v)
-			if fpsBoostActive then task.wait() optimizeInst(v) end
+			if fpsBoostActive then 
+				optimizeInst(v) 
+			end
 		end)
 		table.insert(fpsConnections, connAdded)
 
@@ -398,22 +529,30 @@ local function applyFPSBoost(state)
 			local connChar = p.CharacterAdded:Connect(function(char)
 				if fpsBoostActive then
 					char:WaitForChild("Humanoid", 5)
-					task.wait(0.2)
+					task.wait(0.1)
 					stripCharacter(char)
 				end
 			end)
 			table.insert(fpsConnections, connChar)
 		end
+
+		task.spawn(function()
+			while fpsBoostActive do
+				task.wait(30)
+				pcall(function()
+					gcinfo()
+				end)
+			end
+		end)
 	else
-		for _, conn in ipairs(fpsConnections) do if conn then conn:Disconnect() end end
+		for _, conn in ipairs(fpsConnections) do 
+			if conn then conn:Disconnect() end 
+		end
 		fpsConnections = {}
 
 		Lighting.GlobalShadows = originalLightingSettings.GlobalShadows or true
 		Lighting.OutdoorAmbient = originalLightingSettings.OutdoorAmbient or Color3.fromRGB(128, 128, 128)
 		Lighting.Ambient = originalLightingSettings.Ambient or Color3.fromRGB(128, 128, 128)
-
-		local currentSky = Lighting:FindFirstChild("FPSBoostSky")
-		if currentSky then currentSky:Destroy() end
 	end
 end
 
@@ -698,7 +837,6 @@ local function processWaypoints(waypoints, labelPrefix)
 		if currentIndex == 1 then getInVehicle() end
 		
 		drawForwardPath(waypoints, currentIndex)
-		
 		notifyWaypoint(labelPrefix or "Moving", string.format("Waypoint %d/%d", currentIndex, #waypoints), 1.2)
 		
 		local targetPos = waypoints[currentIndex]
@@ -727,7 +865,6 @@ local function processWaypoints(waypoints, labelPrefix)
 				recoverTween.Completed:Wait()
 			end
 		elseif arrived then
-			-- 📌 จุดเช็ค Waypoint 15 ขาไปสำหรับชะลอความเร็วและสุ่มเวลาหน่วง Sell Cooldown (ทำงานเมื่อเปิด enableSellCooldown)
 			if enableSellCooldown and waypoints == postBuyWaypoints and currentIndex == 16 then
 				local oldSpeed = CONFIG.Speed
 				CONFIG.Speed = 25
@@ -967,7 +1104,6 @@ do
 		Border = true,
 	})
 
-	-- 📌 เปิด/ปิด Waypoint Notification
 	FarmSettingsTab:Toggle({
 		Title = "Show Waypoint Notify",
 		Desc = "Show notification for Waypoint & Waiting Sell Cooldown",
@@ -977,7 +1113,6 @@ do
 
 	FarmSettingsTab:Space()
 
-	-- 📌 เปิด/ปิด Sell Cooldown
 	FarmSettingsTab:Toggle({
 		Title = "Waiting Sell Cooldown",
 		Desc = "Slow down and delay at Waypoint 15 before selling",
@@ -1030,10 +1165,33 @@ do
 		Border = true,
 	})
 
+	--------------------------------------------------------------------
+	-- 🎭 NAME SPOOFER UI ELEMENTS (LOCKED TO UNKNOWN)
+	--------------------------------------------------------------------
+	MiscTab:Toggle({
+		Title = "Enable Name Spoof (Unknown)",
+		Desc = "",
+		Value = nameSpoofActive,
+		Callback = function(state)
+			nameSpoofActive = state
+			applyNameSpoof()
+		end,
+	})
+
+	MiscTab:Space()
+
 	MiscTab:Toggle({
 		Title = "Boost FPS",
 		Value = fpsBoostActive,
 		Callback = function(state) applyFPSBoost(state) end,
+	})
+
+	MiscTab:Space()
+
+	MiscTab:Toggle({
+		Title = "Map Transparency (100%)",
+		Value = mapTransparentActive,
+		Callback = function(state) applyMapTransparency(state) end,
 	})
 
 	MiscTab:Space()
