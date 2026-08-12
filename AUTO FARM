@@ -28,7 +28,6 @@ end
 --------------------------------------------------------------------
 WindUI:AddTheme({
 	Name = "CustomDark",
-	
 	Accent = Color3.fromHex("#9d69e9"),
 	Background = Color3.fromHex("#000000"),
 	BackgroundTransparency = 0,
@@ -37,44 +36,34 @@ WindUI:AddTheme({
 	Placeholder = Color3.fromHex("#000000"),
 	Button = Color3.fromHex("#FFFFFF"),
 	Icon = Color3.fromHex("#9d69e9"),
-	
 	Hover = Color3.fromHex("#FFFFFF"),
-	
 	WindowBackground = Color3.fromHex("#000000"),
 	WindowShadow = Color3.fromHex("#9d69e9"),
-	
 	DialogBackground = Color3.fromHex("#000000"),
 	DialogBackgroundTransparency = 0,
 	DialogTitle = Color3.fromHex("#FFFFFF"),
 	DialogContent = Color3.fromHex("#FFFFFF"),
 	DialogIcon = Color3.fromHex("#9d69e9"),
-	
 	WindowTopbarButtonIcon = Color3.fromHex("#FFFFFF"),
 	WindowTopbarTitle = Color3.fromHex("#FFFFFF"),
 	WindowTopbarAuthor = Color3.fromHex("#FFFFFF"),
 	WindowTopbarIcon = Color3.fromHex("#FFFFFF"),
-	
 	TabBackground = Color3.fromHex("#000000"),
 	TabTitle = Color3.fromHex("#FFFFFF"),
 	TabIcon = Color3.fromHex("#9d69e9"),
-	
 	ElementBackground = Color3.fromHex("#000000"),
 	ElementTitle = Color3.fromHex("#FFFFFF"),
 	ElementDesc = Color3.fromHex("#a1a1aa"),
 	ElementIcon = Color3.fromHex("#9d69e9"),
-	
 	PopupBackground = Color3.fromHex("#FFFFFF"),
 	PopupBackgroundTransparency = 0,
 	PopupTitle = Color3.fromHex("#FFFFFF"),
 	PopupContent = Color3.fromHex("#FFFFFF"),
 	PopupIcon = Color3.fromHex("#9d69e9"),
-	
 	Toggle = Color3.fromHex("#9d69e9"),
 	ToggleBar = Color3.fromHex("#FFFFFF"),
-	
 	Checkbox = Color3.fromHex("#52525b"),
 	CheckboxIcon = Color3.fromHex("#FFFFFF"),
-	
 	Slider = Color3.fromHex("#9d69e9"),
 	SliderThumb = Color3.fromHex("#FFFFFF"),
 })
@@ -119,7 +108,6 @@ Window:Tag({
 -- ⚙️ VARIABLES & CONFIGS
 --------------------------------------------------------------------
 local player = Players.LocalPlayer
-
 local isRunning = false
 local autoSell = true
 local autoLaunder = true
@@ -129,18 +117,16 @@ local noRenderActive = false
 local showPathLine = true
 local pathColor1 = Color3.fromHex("#5865F2")
 local pathColor2 = Color3.fromHex("#FFFFFF")
-
 local pathGlowSize = 1.2
 local pathLength = 6.5
 local pathSpeed = 0.0
-
 local lastVehicle = nil
 
 local CONFIG = {
 	Speed = 250,
 	Height = 2.5,
 	Amount = 5,
-	TweenDelay = 0.1, 
+	TweenDelay = 0,
 	ItemName = "Fake Diamond Ring",
 	SellName = "Smuggle Goods Seller",
 	LaunderName = "Launder Cash"
@@ -233,7 +219,6 @@ end
 local function drawForwardPath(waypoints, currentIndex)
 	clearWaylines()
 	if not showPathLine or not waypoints or currentIndex > #waypoints then return end
-
 	local char = player.Character
 	if not char then return end
 	local hrp = char:FindFirstChild("HumanoidRootPart")
@@ -245,10 +230,8 @@ local function drawForwardPath(waypoints, currentIndex)
 	end
 
 	activeBeamsList = {}
-
 	for i = 1, #pointsToDraw - 1 do
 		local pA, pB = pointsToDraw[i], pointsToDraw[i+1]
-
 		local partA = Instance.new("Part")
 		partA.Size = Vector3.new(0.1, 0.1, 0.1)
 		partA.Position = pA
@@ -292,15 +275,12 @@ local function drawForwardPath(waypoints, currentIndex)
 	pathAnimConnection = RunService.RenderStepped:Connect(function()
 		local speed = 0.5
 		local offset = (tick() * speed) % 1
-
 		for _, item in ipairs(activeBeamsList) do
 			if item.Beam and item.Beam.Parent then
 				local factorA = math.sin((offset + (item.Index * 0.1)) * math.pi * 2) * 0.5 + 0.5
 				local factorB = math.sin((offset + ((item.Index + 1) * 0.1)) * math.pi * 2) * 0.5 + 0.5
-
 				local cA = pathColor1:Lerp(pathColor2, factorA)
 				local cB = pathColor1:Lerp(pathColor2, factorB)
-
 				item.Beam.Color = ColorSequence.new({
 					ColorSequenceKeypoint.new(0, cA),
 					ColorSequenceKeypoint.new(1, cB)
@@ -390,9 +370,11 @@ local function applyFPSBoost(state)
 	else
 		for _, conn in ipairs(fpsConnections) do if conn then conn:Disconnect() end end
 		fpsConnections = {}
+
 		Lighting.GlobalShadows = originalLightingSettings.GlobalShadows or true
 		Lighting.OutdoorAmbient = originalLightingSettings.OutdoorAmbient or Color3.fromRGB(128, 128, 128)
 		Lighting.Ambient = originalLightingSettings.Ambient or Color3.fromRGB(128, 128, 128)
+
 		local currentSky = Lighting:FindFirstChild("FPSBoostSky")
 		if currentSky then currentSky:Destroy() end
 	end
@@ -479,9 +461,7 @@ local function dismountVehicle()
 			hrp.AssemblyLinearVelocity = Vector3.zero
 			hrp.AssemblyAngularVelocity = Vector3.zero
 		end
-
 		humanoid.Sit = false
-		task.wait(0.1)
 		
 		if hrp and lastVehicle then
 			local primary = lastVehicle.PrimaryPart or lastVehicle:FindFirstChildWhichIsA("BasePart", true)
@@ -500,15 +480,12 @@ local function getInVehicle()
 	
 	local primary = lastVehicle.PrimaryPart or lastVehicle:FindFirstChildWhichIsA("BasePart", true)
 	if primary then primary.Anchored = false end
-
 	if humanoid.SeatPart then return end
 	
 	local seat = lastVehicle:FindFirstChildWhichIsA("VehicleSeat", true) or lastVehicle:FindFirstChildWhichIsA("Seat", true)
 	if seat then
 		hrp.CFrame = seat.CFrame + Vector3.new(0, 2, 0)
-		task.wait(0.1)
 		seat:Sit(humanoid)
-		task.wait(0.2)
 	end
 end
 
@@ -532,7 +509,6 @@ local function moveToPositionVelocity(targetPos)
 	local humanoid = char:FindFirstChildOfClass("Humanoid")
 	local hrp = char:FindFirstChild("HumanoidRootPart")
 	if not hrp or not humanoid then return false, false end
-
 	local seat = humanoid.SeatPart
 	local vehicleModel = getVehicleModel(seat)
 	
@@ -560,8 +536,8 @@ local function moveToPositionVelocity(targetPos)
 
 	local noclipConnection = RunService.Stepped:Connect(function()
 		if not isRunning then return end
-		if movePart and movePart.Parent then 
-			floatPart.CFrame = movePart.CFrame * CFrame.new(0, -3.5, 0) 
+		if movePart and movePart.Parent then
+			floatPart.CFrame = movePart.CFrame * CFrame.new(0, -3.5, 0)
 		end
 		if player.Character then
 			for _, part in ipairs(player.Character:GetDescendants()) do
@@ -579,12 +555,10 @@ local function moveToPositionVelocity(targetPos)
 	local arrived = false
 	local rubberbandDetected = false
 	local previousPos = movePart.Position
-
-	local stopThreshold = math.clamp(CONFIG.Speed * 0.04, 6, 15)
+	local stopThreshold = math.clamp(CONFIG.Speed * 0.08, 12, 25) -- ขยายพื้นที่เช็คระยะทางเพื่อให้ผ่าน Waypoint ได้ลื่นไหลที่สุด
 
 	local renderConnection = RunService.Heartbeat:Connect(function()
 		if not isRunning or not movePart or not movePart.Parent then arrived = false return end
-
 		local currentPos = movePart.Position
 		local moveDelta = (currentPos - previousPos).Magnitude
 		local distToTarget = (targetPosWithHeight - currentPos).Magnitude
@@ -596,7 +570,6 @@ local function moveToPositionVelocity(targetPos)
 		end
 		
 		previousPos = currentPos
-
 		if distToTarget <= stopThreshold then
 			arrived = true
 			return
@@ -611,11 +584,12 @@ local function moveToPositionVelocity(targetPos)
 	end)
 
 	while isRunning and not arrived and not rubberbandDetected do
-		task.wait(0.01)
+		task.wait() -- รอน้อยที่สุดระดับ Single Frame ป้องกันอาการค้างสะอึก
 	end
 
 	if noclipConnection then noclipConnection:Disconnect() end
 	if renderConnection then renderConnection:Disconnect() end
+
 	bodyVel:Destroy()
 	bodyGyro:Destroy()
 	floatPart:Destroy()
@@ -646,7 +620,7 @@ local function tweenToInteract(targetPart)
 	local groundTargetCFrame = targetPart.CFrame + Vector3.new(0, 1.2, 0)
 
 	if seat and vehicleModel then
-		local duration = math.clamp((vehicleModel.PrimaryPart.Position - targetPart.Position).Magnitude / 80, 0.15, 0.8)
+		local duration = math.clamp((vehicleModel.PrimaryPart.Position - targetPart.Position).Magnitude / 120, 0.05, 0.4)
 		local cframeValue = Instance.new("CFrameValue")
 		cframeValue.Value = vehicleModel:GetPivot()
 
@@ -656,7 +630,7 @@ local function tweenToInteract(targetPart)
 		end)
 
 		tween:Play()
-		task.wait(duration)
+		tween.Completed:Wait()
 		conn:Disconnect()
 		cframeValue:Destroy()
 
@@ -664,10 +638,10 @@ local function tweenToInteract(targetPart)
 		dismountVehicle()
 		return true
 	else
-		local duration = math.clamp((hrp.Position - targetPart.Position).Magnitude / 80, 0.15, 0.8)
+		local duration = math.clamp((hrp.Position - targetPart.Position).Magnitude / 120, 0.05, 0.4)
 		local tween = TweenService:Create(hrp, TweenInfo.new(duration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {CFrame = groundTargetCFrame})
 		tween:Play()
-		task.wait(duration)
+		tween.Completed:Wait()
 
 		if CONFIG.TweenDelay > 0 then task.wait(CONFIG.TweenDelay) end
 		dismountVehicle()
@@ -692,7 +666,7 @@ local function processWaypoints(waypoints, labelPrefix)
 		local arrived, rubberbandDetected = moveToPositionVelocity(targetPos)
 
 		if rubberbandDetected then
-			task.wait(0.3)
+			task.wait(0.1)
 			local char = player.Character
 			local hrp = char and char:FindFirstChild("HumanoidRootPart")
 			
@@ -709,10 +683,9 @@ local function processWaypoints(waypoints, labelPrefix)
 					if vModel then movePart = vModel.PrimaryPart or humanoid.SeatPart end
 				end
 
-				local recoverTween = TweenService:Create(movePart, TweenInfo.new(0.5, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {CFrame = CFrame.new(safeTargetPos)})
+				local recoverTween = TweenService:Create(movePart, TweenInfo.new(0.2, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {CFrame = CFrame.new(safeTargetPos)})
 				recoverTween:Play()
 				recoverTween.Completed:Wait()
-				task.wait(0.1)
 			end
 		elseif arrived then
 			currentIndex = currentIndex + 1
@@ -721,28 +694,39 @@ local function processWaypoints(waypoints, labelPrefix)
 	clearWaylines()
 end
 
+--------------------------------------------------------------------
+-- ⚡ ULTRA-FAST PROXIMITY INTERACT
+--------------------------------------------------------------------
 local function interactWith(targetPart, prompt)
 	local activePrompt = prompt 
-		or (targetPart and targetPart:FindFirstChildOfClass("ProximityPrompt")) 
-		or (targetPart and targetPart.Parent and targetPart.Parent:FindFirstChildOfClass("ProximityPrompt")) 
+		or (targetPart and targetPart:FindFirstChildOfClass("ProximityPrompt"))
+		or (targetPart and targetPart.Parent and targetPart.Parent:FindFirstChildOfClass("ProximityPrompt"))
 		or (targetPart and targetPart:FindFirstChildWhichIsA("ProximityPrompt", true))
 
 	if activePrompt then
-		activePrompt.HoldDuration = 0
+		if activePrompt.HoldDuration ~= 0 then
+			activePrompt.HoldDuration = 0
+		end
+		
 		if fireproximityprompt then
 			fireproximityprompt(activePrompt)
+			return true
 		else
 			pcall(function()
-				activePrompt:InputHoldBegin()
-				task.wait(0.01)
-				activePrompt:InputHoldEnd()
+				if activePrompt.InputHoldBegin then
+					activePrompt:InputHoldBegin()
+					activePrompt:InputHoldEnd()
+				elseif activePrompt.PromptButtonHoldBegan then
+					activePrompt:PromptButtonHoldBegan()
+					activePrompt:PromptButtonHoldEnded()
+				end
 			end)
+			return true
 		end
-		return true
 	end
 
-	local clickDetector = (targetPart and targetPart:FindFirstChildOfClass("ClickDetector")) 
-		or (targetPart and targetPart.Parent and targetPart.Parent:FindFirstChildOfClass("ClickDetector")) 
+	local clickDetector = (targetPart and targetPart:FindFirstChildOfClass("ClickDetector"))
+		or (targetPart and targetPart.Parent and targetPart.Parent:FindFirstChildOfClass("ClickDetector"))
 		or (targetPart and targetPart:FindFirstChildWhichIsA("ClickDetector", true))
 
 	if clickDetector and fireclickdetector then
@@ -786,27 +770,25 @@ end
 
 local function mainLoop()
 	local savedBuyPart, savedBuyPrompt = nil, nil
-
 	while isRunning do
 		if getItemCount(CONFIG.ItemName) < CONFIG.Amount then
-			if not savedBuyPart or not savedBuyPart.Parent then 
-				savedBuyPart, savedBuyPrompt = findTarget(CONFIG.ItemName) 
+			if not savedBuyPart or not savedBuyPart.Parent then
+				savedBuyPart, savedBuyPrompt = findTarget(CONFIG.ItemName)
 			end
-
 			if savedBuyPart then
 				getInVehicle()
 				if goToTarget(savedBuyPart) then
 					dismountVehicle()
 					local buyTimeout = 0
-					while isRunning and getItemCount(CONFIG.ItemName) < CONFIG.Amount and buyTimeout < 50 do
+					while isRunning and getItemCount(CONFIG.ItemName) < CONFIG.Amount and buyTimeout < 200 do
 						interactWith(savedBuyPart, savedBuyPrompt)
-						task.wait(0.08)
+						task.wait()
 						buyTimeout = buyTimeout + 1
 					end
 					getInVehicle()
 				end
 			else
-				task.wait(0.5)
+				task.wait(0.2)
 			end
 		end
 
@@ -817,24 +799,23 @@ local function mainLoop()
 		if autoSell then
 			local lastBuyPos = postBuyWaypoints[#postBuyWaypoints]
 			local sellPart, sellPrompt = findNearestTargetToPos(CONFIG.SellName, lastBuyPos)
-			if not sellPart then 
-				sellPart, sellPrompt = findNearestTargetToPos("Smuggle", lastBuyPos) 
+			if not sellPart then
+				sellPart, sellPrompt = findNearestTargetToPos("Smuggle", lastBuyPos)
 			end
-
 			if sellPart then
 				getInVehicle()
 				if goToTarget(sellPart) then
 					dismountVehicle()
 					local sellTimeout = 0
-					while isRunning and getItemCount(CONFIG.ItemName) > 0 and sellTimeout < 100 do
+					while isRunning and getItemCount(CONFIG.ItemName) > 0 and sellTimeout < 200 do
 						interactWith(sellPart, sellPrompt)
-						task.wait(0.15)
+						task.wait()
 						sellTimeout = sellTimeout + 1
 					end
 					getInVehicle()
 				end
 			else
-				task.wait(0.5)
+				task.wait(0.2)
 			end
 		end
 
@@ -849,20 +830,19 @@ local function mainLoop()
 				if goToTarget(launderPart) then
 					dismountVehicle()
 					local launderAttempts = 0
-					while isRunning and getProcessableItemCount() > 0 and launderAttempts < 60 do
+					while isRunning and getProcessableItemCount() > 0 and launderAttempts < 200 do
 						interactWith(launderPart, launderPrompt)
-						task.wait(0.08)
+						task.wait()
 						launderAttempts = launderAttempts + 1
 					end
-					task.wait(0.1)
 					getInVehicle()
 				end
 			else
-				task.wait(0.5)
+				task.wait(0.2)
 			end
 		end
 		
-		task.wait(0.1)
+		task.wait()
 	end
 	clearWaylines()
 end
@@ -939,7 +919,7 @@ do
 	FarmSettingsTab:Slider({
 		Title = "Speed",
 		Step = 5,
-		Value = { Min = 150, Max = 310, Default = CONFIG.Speed },
+		Value = { Min = 150, Max = 320, Default = CONFIG.Speed },
 		Callback = function(value) CONFIG.Speed = value end,
 	})
 
