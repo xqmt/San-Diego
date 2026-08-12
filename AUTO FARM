@@ -140,7 +140,7 @@ local showWaypointNotify = true
 local enableSellCooldown = true
 local pathColor1 = Color3.fromHex("#5865F2")
 local pathColor2 = Color3.fromHex("#FFFFFF")
-local pathGlowSize = 1.2
+pathGlowSize = 1.2
 local pathLength = 6.5
 local pathSpeed = 0.0
 local lastVehicle = nil
@@ -153,6 +153,11 @@ local originalDisplayName = player.DisplayName
 
 local originalTransparencies = {}
 local mapTransConnAdded = nil
+
+-- Superman Fly Variables (LOCKED CONFIGS)
+local supermanActive = false
+local supermanTrack = nil
+local SUPERMAN_EMOTE_ID = 101170675501592
 
 local CONFIG = {
 	Speed = 300,
@@ -187,6 +192,73 @@ local function notifyWaypoint(title, desc, duration)
 end
 
 --------------------------------------------------------------------
+-- 🦸‍♂️ SUPERMAN FLY LOGIC (LOCKED ID & CONFIG)
+--------------------------------------------------------------------
+local function playSupermanEmote()
+	local char = player.Character
+	if not char then return end
+	local humanoid = char:FindFirstChildOfClass("Humanoid")
+	if not humanoid then return end
+
+	if supermanTrack then
+		supermanTrack:Stop(0.1)
+		supermanTrack = nil
+	end
+
+	local animId
+	local ok, result = pcall(function() 
+		return game:GetObjects("rbxassetid://" .. tostring(SUPERMAN_EMOTE_ID)) 
+	end)
+	if ok and result and #result > 0 then
+		local anim = result[1]
+		if anim:IsA("Animation") then 
+			animId = anim.AnimationId 
+		else 
+			animId = "rbxassetid://" .. tostring(SUPERMAN_EMOTE_ID) 
+		end
+	else
+		animId = "rbxassetid://" .. tostring(SUPERMAN_EMOTE_ID)
+	end
+
+	local newAnim = Instance.new("Animation")
+	newAnim.AnimationId = animId
+	
+	local okPlay, track = pcall(function()
+		return humanoid:LoadAnimation(newAnim)
+	end)
+
+	if okPlay and track then
+		track.Priority = Enum.AnimationPriority.Action4
+		track:Play(0.1, 1, 0.5)
+		supermanTrack = track
+	end
+end
+
+local function stopSupermanEmote()
+	if supermanTrack then
+		supermanTrack:Stop(0.1)
+		supermanTrack = nil
+	end
+end
+
+local function toggleSupermanFly(state)
+	supermanActive = state
+	if supermanActive then
+		playSupermanEmote()
+	else
+		stopSupermanEmote()
+	end
+end
+
+player.CharacterAdded:Connect(function(char)
+	if supermanActive then
+		char:WaitForChild("Humanoid", 10)
+		task.wait(0.5)
+		playSupermanEmote()
+	end
+end)
+
+--------------------------------------------------------------------
 -- 🎭 FIXED NAME SPOOFER FUNCTIONALITY
 --------------------------------------------------------------------
 local function applyNameSpoof()
@@ -194,12 +266,10 @@ local function applyNameSpoof()
 
 	local targetName = SPOOF_NAME
 
-	-- 1. เปลี่ยน DisplayName ระดับ Player
 	pcall(function()
 		player.DisplayName = targetName
 	end)
 
-	-- 2. เปลี่ยน Humanoid DisplayName
 	local char = player.Character
 	if char then
 		local humanoid = char:FindFirstChildOfClass("Humanoid")
@@ -209,7 +279,6 @@ local function applyNameSpoof()
 			end)
 		end
 
-		-- 3. ค้นหา TextLabel หรือ UI บนหัวตัวละคร
 		for _, v in ipairs(char:GetDescendants()) do
 			if v:IsA("TextLabel") or v:IsA("TextButton") then
 				pcall(function()
@@ -223,18 +292,16 @@ local function applyNameSpoof()
 	end
 end
 
--- เมื่อเกิดใหม่ (Respawn)
 player.CharacterAdded:Connect(function(char)
 	if nameSpoofActive then
 		local humanoid = char:WaitForChild("Humanoid", 10)
 		if humanoid then
-			task.wait(0.5) -- รอให้อุปกรณ์และ UI โหลดสมบูรณ์ก่อนเปลี่ยนชื่อ
+			task.wait(0.5)
 			applyNameSpoof()
 		end
 	end
 end)
 
--- ลูปตรวจสอบสม่ำเสมออย่างปลอดภัย
 task.spawn(function()
 	while true do
 		task.wait(1.5)
@@ -1164,6 +1231,20 @@ do
 		Icon = "solar:list-bold-duotone",
 		Border = true,
 	})
+
+	--------------------------------------------------------------------
+	-- 🦸‍♂️ SUPERMAN FLY TOGGLE (ADDED)
+	--------------------------------------------------------------------
+	MiscTab:Toggle({
+		Title = "Superman Fly",
+		Desc = "",
+		Value = supermanActive,
+		Callback = function(state)
+			toggleSupermanFly(state)
+		end,
+	})
+
+	MiscTab:Space()
 
 	--------------------------------------------------------------------
 	-- 🎭 NAME SPOOFER UI ELEMENTS (LOCKED TO UNKNOWN)
