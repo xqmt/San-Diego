@@ -85,7 +85,7 @@ WindUI:AddTheme({
 local Window = WindUI:CreateWindow({
 	Title = "🌴 San Diego Auto Farm",
 	Folder = "SanDiegoFarm",
-	Icon = "solar:accumulator-outline",
+	Icon = "solar:star-fall-minimalistic-bold",
 	Theme = "CustomDark",
 	NewElements = true,
 	HideSearchBar = false,
