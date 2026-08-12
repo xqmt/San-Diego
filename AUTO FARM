@@ -72,14 +72,14 @@ WindUI:AddTheme({
 -- 🪟 WINDOW INITIALIZATION
 --------------------------------------------------------------------
 local Window = WindUI:CreateWindow({
-	Title = "🌴 San Diego Auto Farm",
+	Title = "VECTOR PROJECT",
 	Folder = "SanDiegoFarm",
 	Icon = "solar:star-fall-minimalistic-bold",
 	Theme = "CustomDark",
 	NewElements = true,
 	HideSearchBar = true,
 	OpenButton = {
-		Title = "Open Auto Farm UI",
+		Title = "Open VECTOR UI",
 		CornerRadius = UDim.new(1, 0),
 		StrokeThickness = 2.5,
 		Enabled = true,
@@ -98,7 +98,7 @@ local Window = WindUI:CreateWindow({
 })
 
 Window:Tag({
-	Title = "v" .. WindUI.Version,
+	Title = "v2.2",
 	Icon = "github",
 	Color = Color3.fromHex("#9d69e9"),
 	Border = true,
