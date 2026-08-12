@@ -72,7 +72,7 @@ WindUI:AddTheme({
 -- 🪟 WINDOW INITIALIZATION
 --------------------------------------------------------------------
 local Window = WindUI:CreateWindow({
-	Title = "Qu1nember1x983",
+	Title = "🌴 San Diego Auto Farm",
 	Folder = "SanDiegoFarm",
 	Icon = "solar:star-fall-minimalistic-bold",
 	Theme = "CustomDark",
