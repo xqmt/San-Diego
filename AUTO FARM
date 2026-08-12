@@ -50,7 +50,7 @@ WindUI:AddTheme({
 	WindowTopbarIcon = Color3.fromHex("#FFFFFF"),
 	TabBackground = Color3.fromHex("#000000"),
 	TabTitle = Color3.fromHex("#FFFFFF"),
-	TabIcon = Color3.fromHex("#9d69e9"),
+	TabIcon = Color3.fromHex("#FFFFFF"),
 	ElementBackground = Color3.fromHex("#000000"),
 	ElementTitle = Color3.fromHex("#FFFFFF"),
 	ElementDesc = Color3.fromHex("#a1a1aa"),
@@ -102,10 +102,27 @@ local Window = WindUI:CreateWindow({
     
 })
 
+local function getExecutor()
+	local name = "Unknown"
+	if identifyexecutor then
+		name = identifyexecutor()
+	elseif getexecutorname then
+		name = getexecutorname()
+	end
+	return name
+end
+
 Window:Tag({
 	Title = "v2.2",
 	Icon = "github",
 	Color = Color3.fromHex("#9d69e9"),
+	Border = true,
+})
+
+Window:Tag({
+	Title = getExecutor(),
+	Icon = "solar:code-bold",
+	Color = Color3.fromHex("#69e99d"),
 	Border = true,
 })
 
