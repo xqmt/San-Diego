@@ -72,14 +72,14 @@ WindUI:AddTheme({
 -- 🪟 WINDOW INITIALIZATION
 --------------------------------------------------------------------
 local Window = WindUI:CreateWindow({
-	Title = "VECTOR PROJECT",
+	Title = "Qu1nember1x983",
 	Folder = "SanDiegoFarm",
 	Icon = "solar:star-fall-minimalistic-bold",
 	Theme = "CustomDark",
 	NewElements = true,
 	HideSearchBar = true,
 	OpenButton = {
-		Title = "Open VECTOR UI",
+		Title = "Open Auto Farm UI",
 		CornerRadius = UDim.new(1, 0),
 		StrokeThickness = 2.5,
 		Enabled = true,
