@@ -64,7 +64,7 @@ WindUI:AddTheme({
 	ToggleBar = Color3.fromHex("#FFFFFF"),
 	Checkbox = Color3.fromHex("#52525b"),
 	CheckboxIcon = Color3.fromHex("#FFFFFF"),
-	Slider = Color3.fromHex("#9d69e9"),
+	Slider = Color3.fromHex("#69e99d"),
 	SliderThumb = Color3.fromHex("#FFFFFF"),
 })
 
