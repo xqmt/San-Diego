@@ -451,23 +451,45 @@ lp.CharacterAdded:Connect(function(char)
 	end
 end)
 
+-- --- ANIMATED PURPLE-BLACK GRADIENT SPOOF ---
+local function getAnimatedGradientText(text)
+	local result = ""
+	local len = #text
+	local t = tick() * 3 -- Speed of animation
+	local c1 = Color3.fromRGB(150, 0, 255) -- Deep Neon Purple
+	local c2 = Color3.fromRGB(15, 15, 15)   -- Soft Black
+	
+	for i = 1, len do
+		local char = text:sub(i, i)
+		local factor = (math.sin(t + (i * 0.4)) + 1) / 2
+		local col = c1:Lerp(c2, factor)
+		local hex = string.format("#%02X%02X%02X", math.floor(col.R * 255), math.floor(col.G * 255), math.floor(col.B * 255))
+		result = result .. string.format('<font color="%s">%s</font>', hex, char)
+	end
+	return result
+end
+
 local function applySpoof()
 	if not spoofActive then return end
+	local formattedName = getAnimatedGradientText(SPOOF_NAME)
+	
 	pcall(function() lp.DisplayName = SPOOF_NAME end)
 
 	local char = lp.Character
 	if char then
 		local hum = char:FindFirstChildOfClass("Humanoid")
 		if hum and hum.Health > 0 then
-			pcall(function() hum.DisplayName = SPOOF_NAME end)
+			pcall(function() 
+				hum.DisplayName = SPOOF_NAME 
+			end)
 		end
 
 		for _, v in ipairs(char:GetDescendants()) do
 			if v:IsA("TextLabel") or v:IsA("TextButton") then
 				pcall(function()
-					if string.find(v.Text, origName) or string.find(v.Text, origDisplay) then
-						v.Text = string.gsub(v.Text, origName, SPOOF_NAME)
-						v.Text = string.gsub(v.Text, origDisplay, SPOOF_NAME)
+					v.RichText = true
+					if string.find(v.Text, origName) or string.find(v.Text, origDisplay) or string.find(v.Text, SPOOF_NAME) then
+						v.Text = formattedName
 					end
 				end)
 			end
@@ -484,12 +506,9 @@ lp.CharacterAdded:Connect(function(char)
 	end
 end)
 
-task.spawn(function()
-	while true do
-		task.wait(1.5)
-		if spoofActive and lp.Character and lp.Character:FindFirstChildOfClass("Humanoid") then
-			applySpoof()
-		end
+runService.RenderStepped:Connect(function()
+	if spoofActive and lp.Character and lp.Character:FindFirstChildOfClass("Humanoid") then
+		applySpoof()
 	end
 end)
 
