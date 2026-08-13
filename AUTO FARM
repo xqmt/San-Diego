@@ -110,7 +110,7 @@ local pathLen = 6.5
 local pathSpd = 0.0
 local lastVeh = nil
 
--- ESP Settings (Removed Name ESP)
+-- ESP Settings
 local espSettings = {
 	Chams = false,
 	Skeleton = false,
@@ -251,7 +251,6 @@ runService.RenderStepped:Connect(function()
 		if char and char:FindFirstChild("HumanoidRootPart") and char:FindFirstChildOfClass("Humanoid") and char:FindFirstChildOfClass("Humanoid").Health > 0 and not isTeammate then
 			local teamCol = getTeamColor(player)
 			
-			-- 1. Chams
 			if espSettings.Chams then
 				if not esp.Highlight or esp.Highlight.Parent ~= char then
 					if esp.Highlight then esp.Highlight:Destroy() end
@@ -271,7 +270,6 @@ runService.RenderStepped:Connect(function()
 				end
 			end
 			
-			-- 2. Skeleton ESP
 			if espSettings.Skeleton then
 				for _, bData in ipairs(esp.Bones) do
 					local p1 = char:FindFirstChild(bData.Pair[1])
@@ -339,7 +337,7 @@ local function getClosestPlayer()
 	return closestPlayer
 end
 
--- Throttled Target Fetcher (รันคำนวณเป้าหมายทุกๆ 0.03 วินาที เพื่อลดภาระ CPU)
+-- Throttled Target Fetcher
 task.spawn(function()
 	while true do
 		if silentAimSettings.Enabled then
@@ -355,7 +353,6 @@ end)
 runService.RenderStepped:Connect(function()
 	local center = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y / 2)
 
-	-- Update Dynamic FOV Circle Color
 	if silentAimSettings.Enabled and silentAimSettings.ShowFOV then
 		fovCircle.Position = center
 		fovCircle.Radius = silentAimSettings.FOV
@@ -365,7 +362,6 @@ runService.RenderStepped:Connect(function()
 		fovCircle.Visible = false
 	end
 
-	-- Update Target Line
 	if silentAimSettings.Enabled and silentAimSettings.ShowTargetLine and currentTarget then
 		local screenPos, onScreen = camera:WorldToViewportPoint(currentTarget.Position)
 		if onScreen then
@@ -381,28 +377,39 @@ runService.RenderStepped:Connect(function()
 	end
 end)
 
--- Hooking __namecall for Silent Aim
+-- Unified & Secure Silent Aim Hook
 local oldNamecall
-oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
+oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
+	if checkcaller() then return oldNamecall(self, ...) end
+
 	if silentAimSettings.Enabled and currentTarget and math.random(1, 100) <= silentAimSettings.HitChance then
 		local method = getnamecallmethod()
 		local args = {...}
+		local targetPos = currentTarget.Position
 
+		-- Camera Screen/Viewport to Ray
+		if (method == "ScreenPointToRay" or method == "ViewportPointToRay") and self:IsA("Camera") then
+			return Ray.new(camera.CFrame.Position, (targetPos - camera.CFrame.Position).Unit)
+		end
+
+		-- Workspace Raycast
 		if method == "Raycast" and self == workspace then
-			args[2] = (currentTarget.Position - args[1]).Unit * args[2].Magnitude
+			args[2] = (targetPos - args[1]).Unit * args[2].Magnitude
 			return oldNamecall(self, table.unpack(args))
-		elseif method == "FindPartOnWithIgnoreList" or method == "FindPartOn" then
-			if args[1] then
-				local origin = args[1].Origin
-				local dir = (currentTarget.Position - origin).Unit * 1000
-				args[1] = Ray.new(origin, dir)
+		end
+
+		-- FindPartOnRay / IgnoreList / Whitelist
+		if (method == "FindPartOnRay" or method == "FindPartOnRayWithIgnoreList" or method == "FindPartOnRayWithWhitelist") and self == workspace then
+			local currentRay = args[1]
+			if currentRay and typeof(currentRay) == "Ray" then
+				args[1] = Ray.new(currentRay.Origin, (targetPos - currentRay.Origin).Unit * currentRay.Direction.Magnitude)
+				return oldNamecall(self, table.unpack(args))
 			end
-			return oldNamecall(self, table.unpack(args))
 		end
 	end
 
 	return oldNamecall(self, ...)
-end)
+end))
 
 local function playFlyEmote()
 	local char = lp.Character
@@ -452,7 +459,6 @@ lp.CharacterAdded:Connect(function(char)
 	end
 end)
 
--- --- ANIMATED PURPLE-BLACK GRADIENT SPOOF ---
 local function getAnimatedGradientText(text)
 	local result = ""
 	local len = #text
@@ -496,7 +502,6 @@ local function applySpoof()
 	end
 end
 
--- Spoof Update Loop (Throttled เพื่อป้องกัน RenderStepped หนักเกินไป)
 task.spawn(function()
 	while true do
 		if spoofActive and lp.Character and lp.Character:FindFirstChildOfClass("Humanoid") then
@@ -1294,7 +1299,6 @@ do
 	combatTab:Space()
 	combatTab:Colorpicker({ Title = "Target Line Color", Default = silentAimSettings.LineColor, Callback = function(v) silentAimSettings.LineColor = v end })
 	
-	-- ESP Tab under Combat Features
 	local espTab = combatSec:Tab({ Title = "Visuals (ESP)", Icon = "solar:eye-bold", Border = true })
 
 	espTab:Toggle({
