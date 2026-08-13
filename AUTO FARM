@@ -64,20 +64,6 @@ Title.TextSize = 16
 Title.TextXAlignment = Enum.TextXAlignment.Left
 Title.ZIndex = 5
 
--- Subtitle / Status
-local SubTitle = Instance.new("TextLabel")
-SubTitle.Name = "SubTitle"
-SubTitle.Parent = MainFrame
-SubTitle.BackgroundTransparency = 1
-SubTitle.Position = UDim2.new(0, 20, 0, 36)
-SubTitle.Size = UDim2.new(1, -40, 0, 15)
-SubTitle.Font = Enum.Font.Gotham
-SubTitle.Text = "Choose your execution mode"
-SubTitle.TextColor3 = Color3.fromRGB(140, 140, 160)
-SubTitle.TextSize = 12
-SubTitle.TextXAlignment = Enum.TextXAlignment.Left
-SubTitle.ZIndex = 5
-
 -- Function: Setup Button Styling & Animations
 local function StyleButton(btn, primaryColor, hoverColor)
     btn.AutoButtonColor = false
