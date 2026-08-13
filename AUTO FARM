@@ -65,7 +65,7 @@ windUI:AddTheme({
 })
 
 local win = windUI:CreateWindow({
-	Title = "🌴 San Diego Auto Farm & Combat",
+	Title = "Aether.club",
 	Folder = "SanDiegoFarm",
 	Icon = "solar:star-fall-minimalistic-bold",
 	Theme = "CustomDark",
