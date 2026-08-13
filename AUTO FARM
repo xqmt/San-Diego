@@ -2,6 +2,7 @@ local runService = game:GetService("RunService")
 local players = game:GetService("Players")
 local tweenService = game:GetService("TweenService")
 local lighting = game:GetService("Lighting")
+local userGameSettings = UserSettings():GetService("UserGameSettings")
 
 local cloneref = (cloneref or clonereference or function(inst) return inst end)
 local repStorage = cloneref(game:GetService("ReplicatedStorage"))
@@ -64,7 +65,7 @@ windUI:AddTheme({
 })
 
 local win = windUI:CreateWindow({
-	Title = "🌴 San Diego Auto Farm",
+	Title = "🌴 San Diego Auto Farm & Combat",
 	Folder = "SanDiegoFarm",
 	Icon = "solar:star-fall-minimalistic-bold",
 	Theme = "CustomDark",
@@ -72,7 +73,7 @@ local win = windUI:CreateWindow({
 	HideSearchBar = true,
 	User = { Enabled = true, Anonymous = true, Callback = function() end },
 	OpenButton = {
-		Title = "Open Auto Farm UI",
+		Title = "Open Main UI",
 		CornerRadius = UDim.new(1, 0),
 		StrokeThickness = 2.5,
 		Enabled = true,
@@ -87,10 +88,11 @@ local function getExec()
 	return (identifyexecutor and identifyexecutor()) or (getexecutorname and getexecutorname()) or "Unknown"
 end
 
-win:Tag({ Title = "v2.2", Icon = "github", Color = Color3.fromHex("#9d69e9"), Border = true })
+win:Tag({ Title = "v2.3", Icon = "github", Color = Color3.fromHex("#9d69e9"), Border = true })
 win:Tag({ Title = getExec(), Icon = "solar:code-bold", Color = Color3.fromHex("#69e99d"), Border = true })
 
 local lp = players.LocalPlayer
+local camera = workspace.CurrentCamera
 local running = false
 local autoSell = true
 local autoLaunder = true
@@ -107,6 +109,40 @@ local pathGlow = 1.2
 local pathLen = 6.5
 local pathSpd = 0.0
 local lastVeh = nil
+
+-- ESP Settings (Removed Name ESP)
+local espSettings = {
+	Chams = false,
+	Skeleton = false,
+	TeamCheck = false
+}
+
+-- Silent Aim & Combat Variables
+local silentAimSettings = {
+	Enabled = false,
+	TargetPart = "Head",
+	FOV = 150,
+	ShowFOV = false,
+	ShowTargetLine = false,
+	TeamCheck = true,
+	KillCheck = true,
+	HitChance = 100,
+	LineColor = Color3.fromRGB(255, 50, 50)
+}
+
+local fovCircle = Drawing.new("Circle")
+fovCircle.Thickness = 1.5
+fovCircle.NumSides = 60
+fovCircle.Filled = false
+fovCircle.Transparency = 1
+fovCircle.Visible = false
+
+local targetLine = Drawing.new("Line")
+targetLine.Thickness = 1.5
+targetLine.Transparency = 1
+targetLine.Visible = false
+
+local currentTarget = nil
 
 local spoofActive = false
 local SPOOF_NAME = "$nknown?-94'7!/"
@@ -143,6 +179,229 @@ local function notify(title, desc, dur)
 		end)
 	end
 end
+
+-- ESP Implementation Logic
+local espObjects = {}
+
+local function getTeamColor(player)
+	if player.Team then
+		return player.TeamColor.Color
+	end
+	return Color3.fromRGB(255, 255, 255)
+end
+
+local function createESP(player)
+	if player == lp then return end
+	
+	local esp = {
+		Highlight = nil,
+		Bones = {}
+	}
+	
+	local bonePairs = {
+		{"Head", "UpperTorso"},
+		{"UpperTorso", "LowerTorso"},
+		{"UpperTorso", "LeftUpperArm"},
+		{"LeftUpperArm", "LeftLowerArm"},
+		{"LeftLowerArm", "LeftHand"},
+		{"UpperTorso", "RightUpperArm"},
+		{"RightUpperArm", "RightLowerArm"},
+		{"RightLowerArm", "RightHand"},
+		{"LowerTorso", "LeftUpperLeg"},
+		{"LeftUpperLeg", "LeftLowerLeg"},
+		{"LeftLowerLeg", "LeftFoot"},
+		{"LowerTorso", "RightUpperLeg"},
+		{"RightUpperLeg", "RightLowerLeg"},
+		{"RightLowerLeg", "RightFoot"}
+	}
+	
+	for i = 1, #bonePairs do
+		local line = Drawing.new("Line")
+		line.Thickness = 1.5
+		line.Visible = false
+		table.insert(esp.Bones, {Line = line, Pair = bonePairs[i]})
+	end
+	
+	espObjects[player] = esp
+end
+
+local function removeESP(player)
+	local esp = espObjects[player]
+	if esp then
+		if esp.Highlight then esp.Highlight:Destroy() end
+		if esp.Bones then
+			for _, b in ipairs(esp.Bones) do
+				if b.Line then b.Line:Remove() end
+			end
+		end
+		espObjects[player] = nil
+	end
+end
+
+for _, p in ipairs(players:GetPlayers()) do createESP(p) end
+players.PlayerAdded:Connect(createESP)
+players.PlayerRemoving:Connect(removeESP)
+
+-- ESP Updater Render Loop
+runService.RenderStepped:Connect(function()
+	for player, esp in pairs(espObjects) do
+		local char = player.Character
+		local teamColor = getTeamColor(player)
+		local isTeammate = (espSettings.TeamCheck and player.Team == lp.Team)
+		
+		if char and char:FindFirstChild("HumanoidRootPart") and char:FindFirstChildOfClass("Humanoid") and char:FindFirstChildOfClass("Humanoid").Health > 0 and not isTeammate then
+			local teamCol = getTeamColor(player)
+			
+			-- 1. Chams (No Outline)
+			if espSettings.Chams then
+				if not esp.Highlight or esp.Highlight.Parent ~= char then
+					if esp.Highlight then esp.Highlight:Destroy() end
+					local hl = Instance.new("Highlight")
+					hl.Adornee = char
+					hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+					hl.FillTransparency = 0.5
+					hl.OutlineTransparency = 1 -- No Outline
+					hl.Parent = char
+					esp.Highlight = hl
+				end
+				esp.Highlight.FillColor = teamCol
+				esp.Highlight.Enabled = true
+			else
+				if esp.Highlight then
+					esp.Highlight.Enabled = false
+				end
+			end
+			
+			-- 2. Skeleton ESP
+			if espSettings.Skeleton then
+				for _, bData in ipairs(esp.Bones) do
+					local p1 = char:FindFirstChild(bData.Pair[1])
+					local p2 = char:FindFirstChild(bData.Pair[2])
+					
+					if p1 and p2 then
+						local pos1, vis1 = camera:WorldToViewportPoint(p1.Position)
+						local pos2, vis2 = camera:WorldToViewportPoint(p2.Position)
+						
+						if vis1 and vis2 then
+							bData.Line.From = Vector2.new(pos1.X, pos1.Y)
+							bData.Line.To = Vector2.new(pos2.X, pos2.Y)
+							bData.Line.Color = teamCol
+							bData.Line.Visible = true
+						else
+							bData.Line.Visible = false
+						end
+					else
+						bData.Line.Visible = false
+					end
+				end
+			else
+				for _, bData in ipairs(esp.Bones) do
+					bData.Line.Visible = false
+				end
+			end
+		else
+			if esp.Highlight then esp.Highlight.Enabled = false end
+			for _, bData in ipairs(esp.Bones) do bData.Line.Visible = false end
+		end
+	end
+end)
+
+-- Get Closest Player (Without Wall Check)
+local function getClosestPlayer()
+	local closestPlayer = nil
+	local shortestDistance = silentAimSettings.FOV
+	local mousePos = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y / 2)
+
+	for _, player in ipairs(players:GetPlayers()) do
+		if player ~= lp then
+			if silentAimSettings.TeamCheck and player.Team == lp.Team then continue end
+
+			local char = player.Character
+			if char and char:FindFirstChild(silentAimSettings.TargetPart) then
+				local hum = char:FindFirstChildOfClass("Humanoid")
+				if silentAimSettings.KillCheck and (not hum or hum.Health <= 0) then continue end
+
+				local targetPart = char[silentAimSettings.TargetPart]
+				local screenPos, onScreen = camera:WorldToViewportPoint(targetPart.Position)
+
+				if onScreen then
+					local dist = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
+					if dist < shortestDistance then
+						shortestDistance = dist
+						closestPlayer = targetPart
+					end
+				end
+			end
+		end
+	end
+	return closestPlayer
+end
+
+-- RenderStepped for Visuals (Dynamic FOV Color)
+runService.RenderStepped:Connect(function()
+	local center = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y / 2)
+
+	-- Get Current Target
+	if silentAimSettings.Enabled then
+		currentTarget = getClosestPlayer()
+	else
+		currentTarget = nil
+	end
+
+	-- Update Dynamic FOV Circle Color
+	if silentAimSettings.Enabled and silentAimSettings.ShowFOV then
+		fovCircle.Position = center
+		fovCircle.Radius = silentAimSettings.FOV
+		
+		if currentTarget then
+			fovCircle.Color = Color3.fromRGB(157, 105, 233)
+		else
+			fovCircle.Color = Color3.fromRGB(255, 0, 0)
+		end
+		
+		fovCircle.Visible = true
+	else
+		fovCircle.Visible = false
+	end
+
+	-- Update Target Line
+	if silentAimSettings.Enabled and silentAimSettings.ShowTargetLine and currentTarget then
+		local screenPos, onScreen = camera:WorldToViewportPoint(currentTarget.Position)
+		if onScreen then
+			targetLine.From = center
+			targetLine.To = Vector2.new(screenPos.X, screenPos.Y)
+			targetLine.Color = silentAimSettings.LineColor
+			targetLine.Visible = true
+		else
+			targetLine.Visible = false
+		end
+	else
+		targetLine.Visible = false
+	end
+end)
+
+-- Hooking __namecall for Silent Aim
+local oldNamecall
+oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
+	local args = {...}
+	local method = getnamecallmethod()
+
+	if silentAimSettings.Enabled and currentTarget and math.random(1, 100) <= silentAimSettings.HitChance then
+		if method == "Raycast" and self == workspace then
+			args[2] = (currentTarget.Position - args[1]).Unit * args[2].Magnitude
+			return oldNamecall(self, table.unpack(args))
+		elseif method == "FindPartOnWithIgnoreList" or method == "FindPartOn" then
+			if args[1] then
+				local origin = args[1].Origin
+				local dir = (currentTarget.Position - origin).Unit * 1000
+				args[1] = Ray.new(origin, dir)
+			end
+			return oldNamecall(self, table.unpack(args))
+		end
+	end
+
+	return oldNamecall(self, ...)
+end)
 
 local function playFlyEmote()
 	local char = lp.Character
@@ -380,7 +639,6 @@ local function renderPath(wps, idx)
 
 		table.insert(activeObjs, partA)
 		table.insert(activeObjs, partB)
-		table.insert(activeObjs, b)
 		table.insert(activeBeams, {Beam = b, Index = i})
 	end
 
@@ -969,9 +1227,88 @@ local function farmLoop()
 	clearPath()
 end
 
+local combatSec = win:Section({ Title = "Combat Features" })
 local mainSec = win:Section({ Title = "Main Features" })
 local setSec = win:Section({ Title = "Settings Farm" })
 local miscSec = win:Section({ Title = "Misc" })
+
+do
+	local combatTab = combatSec:Tab({ Title = "Combat", Icon = "solar:target-bold", Border = true })
+
+	combatTab:Toggle({
+		Title = "Enable Silent Aim",
+		Desc = "",
+		Value = silentAimSettings.Enabled,
+		Callback = function(v) silentAimSettings.Enabled = v end,
+	})
+
+	combatTab:Space()
+
+	combatTab:Dropdown({
+		Title = "Target Part",
+		Values = { "Head", "HumanoidRootPart", "Torso" },
+		Value = silentAimSettings.TargetPart,
+		Callback = function(v) silentAimSettings.TargetPart = v end,
+	})
+
+	combatTab:Space()
+	combatTab:Toggle({ Title = "Team Check", Value = silentAimSettings.TeamCheck, Callback = function(v) silentAimSettings.TeamCheck = v end })
+	combatTab:Space()
+	combatTab:Toggle({ Title = "Kill Check (Alive Only)", Value = silentAimSettings.KillCheck, Callback = function(v) silentAimSettings.KillCheck = v end })
+	combatTab:Space()
+
+	combatTab:Slider({
+		Title = "Hit Chance (%)",
+		Step = 1,
+		Value = { Min = 1, Max = 100, Default = silentAimSettings.HitChance },
+		Callback = function(v) silentAimSettings.HitChance = v end
+	})
+
+	combatTab:Space()
+
+	combatTab:Toggle({ Title = "Show FOV Circle", Value = silentAimSettings.ShowFOV, Callback = function(v) silentAimSettings.ShowFOV = v end })
+	combatTab:Space()
+	combatTab:Slider({
+		Title = "FOV Radius",
+		Step = 5,
+		Value = { Min = 30, Max = 500, Default = silentAimSettings.FOV },
+		Callback = function(v) silentAimSettings.FOV = v end
+	})
+
+	combatTab:Space()
+
+	combatTab:Toggle({ Title = "Show Target Line", Value = silentAimSettings.ShowTargetLine, Callback = function(v) silentAimSettings.ShowTargetLine = v end })
+	combatTab:Space()
+	combatTab:Colorpicker({ Title = "Target Line Color", Default = silentAimSettings.LineColor, Callback = function(v) silentAimSettings.LineColor = v end })
+	
+	-- ESP Tab under Combat Features
+	local espTab = combatSec:Tab({ Title = "Visuals (ESP)", Icon = "solar:eye-bold", Border = true })
+
+	espTab:Toggle({
+		Title = "Chams",
+		Desc = "",
+		Value = espSettings.Chams,
+		Callback = function(v) espSettings.Chams = v end
+	})
+
+	espTab:Space()
+
+	espTab:Toggle({
+		Title = "Skeleton",
+		Desc = "",
+		Value = espSettings.Skeleton,
+		Callback = function(v) espSettings.Skeleton = v end
+	})
+
+	espTab:Space()
+
+	espTab:Toggle({
+		Title = "ESP Team Check",
+		Desc = "Hide ESP for teammates",
+		Value = espSettings.TeamCheck,
+		Callback = function(v) espSettings.TeamCheck = v end
+	})
+end
 
 do
 	local farmTab = mainSec:Tab({ Title = "Auto Farm", Icon = "solar:palette-round-bold-duotone", Border = true })
