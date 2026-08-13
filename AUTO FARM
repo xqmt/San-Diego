@@ -1246,7 +1246,7 @@ local function farmLoop()
 	clearPath()
 end
 
-local combatSec = win:Section({ Title = "Combat-Just Beta-have issues" })
+local combatSec = win:Section({ Title = "Combat" })
 local mainSec = win:Section({ Title = "Main Features" })
 local setSec = win:Section({ Title = "Settings Farm" })
 local miscSec = win:Section({ Title = "Misc" })
