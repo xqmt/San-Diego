@@ -1392,7 +1392,7 @@ do
 	miscTab:Space()
 
 	miscTab:Toggle({
-		Title = "Enable Name Spoof (Unknown)",
+		Title = "Enable Name Spoof",
 		Desc = "",
 		Value = spoofActive,
 		Callback = function(v)
