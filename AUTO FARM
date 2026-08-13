@@ -145,7 +145,7 @@ targetLine.Visible = false
 local currentTarget = nil
 
 local spoofActive = false
-local SPOOF_NAME = "$nknown?-94'7!/"
+local SPOOF_NAME = "Aether.club"
 local origName = lp.Name
 local origDisplay = lp.DisplayName
 
