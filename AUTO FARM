@@ -15,7 +15,8 @@ end
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "ModernSelectGui"
 ScreenGui.Parent = ParentTarget
-ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+-- แก้ไข: ใช้ Global เพื่อให้ ZIndex ทำงานตามตัวเลขที่ตั้งไว้
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Global
 
 -- Main Frame (Background Window)
 local MainFrame = Instance.new("Frame")
@@ -28,6 +29,7 @@ MainFrame.Size = UDim2.new(0, 0, 0, 0) -- For Entrance Animation
 MainFrame.ClipsDescendants = true
 MainFrame.Active = true
 MainFrame.Draggable = true
+MainFrame.ZIndex = 1
 
 local MainCorner = Instance.new("UICorner")
 MainCorner.CornerRadius = UDim.new(0, 16)
@@ -60,7 +62,7 @@ Title.Text = "SELECT SCRIPT"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.TextSize = 16
 Title.TextXAlignment = Enum.TextXAlignment.Left
-Title.ZIndex = 2
+Title.ZIndex = 5
 
 -- Subtitle / Status
 local SubTitle = Instance.new("TextLabel")
@@ -74,22 +76,33 @@ SubTitle.Text = "Choose your execution mode"
 SubTitle.TextColor3 = Color3.fromRGB(140, 140, 160)
 SubTitle.TextSize = 12
 SubTitle.TextXAlignment = Enum.TextXAlignment.Left
-SubTitle.ZIndex = 2
+SubTitle.ZIndex = 5
 
 -- Function: Setup Button Styling & Animations
 local function StyleButton(btn, primaryColor, hoverColor)
     btn.AutoButtonColor = false
-    
+    btn.BackgroundTransparency = 1
+    btn.ZIndex = 10 -- ตั้งค่าปุ่มให้อยู่ชั้นบนสุดเสมอ
+
+    -- สร้าง Background Frame
+    local bgFrame = Instance.new("Frame")
+    bgFrame.Name = "ButtonBG"
+    bgFrame.Size = UDim2.new(1, 0, 1, 0)
+    bgFrame.Position = UDim2.new(0, 0, 0, 0)
+    bgFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    bgFrame.ZIndex = 2 -- อยู่หลัง Text ของปุ่มแต่อยู่บน MainFrame
+    bgFrame.Parent = btn
+
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, 10)
-    corner.Parent = btn
+    corner.Parent = bgFrame
 
     local stroke = Instance.new("UIStroke")
     stroke.Thickness = 1
     stroke.Color = primaryColor
     stroke.Transparency = 0.6
     stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-    stroke.Parent = btn
+    stroke.Parent = bgFrame
 
     local gradient = Instance.new("UIGradient")
     gradient.Color = ColorSequence.new{
@@ -97,8 +110,9 @@ local function StyleButton(btn, primaryColor, hoverColor)
         ColorSequenceKeypoint.new(1.00, hoverColor)
     }
     gradient.Rotation = 90
-    gradient.Parent = btn
+    gradient.Parent = bgFrame
 
+    -- Animation เมื่อเอาเมาส์ไปชี้
     btn.MouseEnter:Connect(function()
         TweenService:Create(btn, TweenInfo.new(0.2), {Size = btn.Size + UDim2.new(0, 0, 0, 2)}):Play()
         TweenService:Create(stroke, TweenInfo.new(0.2), {Transparency = 0}):Play()
@@ -114,7 +128,6 @@ end
 local FarmOnlyBtn = Instance.new("TextButton")
 FarmOnlyBtn.Name = "FarmOnlyBtn"
 FarmOnlyBtn.Parent = MainFrame
-FarmOnlyBtn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 FarmOnlyBtn.Position = UDim2.new(0.08, 0, 0.38, 0)
 FarmOnlyBtn.Size = UDim2.new(0.84, 0, 0, 42)
 FarmOnlyBtn.Font = Enum.Font.GothamBold
@@ -122,22 +135,21 @@ FarmOnlyBtn.Text = "Farm Only"
 FarmOnlyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 FarmOnlyBtn.TextSize = 14
 FarmOnlyBtn.TextStrokeTransparency = 0.5
-FarmOnlyBtn.ZIndex = 2
+FarmOnlyBtn.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
 StyleButton(FarmOnlyBtn, Color3.fromRGB(0, 140, 255), Color3.fromRGB(0, 90, 200))
 
 -- Farm and Combat Button
 local FarmCombatBtn = Instance.new("TextButton")
 FarmCombatBtn.Name = "FarmCombatBtn"
 FarmCombatBtn.Parent = MainFrame
-FarmCombatBtn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 FarmCombatBtn.Position = UDim2.new(0.08, 0, 0.66, 0)
 FarmCombatBtn.Size = UDim2.new(0.84, 0, 0, 42)
 FarmCombatBtn.Font = Enum.Font.GothamBold
-FarmCombatBtn.Text = "⚔️   Farm and Combat"
+FarmCombatBtn.Text = "Farm and Combat"
 FarmCombatBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 FarmCombatBtn.TextSize = 14
 FarmCombatBtn.TextStrokeTransparency = 0.5
-FarmCombatBtn.ZIndex = 2
+FarmCombatBtn.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
 StyleButton(FarmCombatBtn, Color3.fromRGB(235, 60, 80), Color3.fromRGB(180, 40, 60))
 
 -- Smooth Close Function
