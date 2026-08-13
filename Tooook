@@ -132,7 +132,7 @@ local silentAimSettings = {
 
 local fovCircle = Drawing.new("Circle")
 fovCircle.Thickness = 1.5
-fovCircle.NumSides = 60
+fovCircle.NumSides = 40
 fovCircle.Filled = false
 fovCircle.Transparency = 1
 fovCircle.Visible = false
@@ -180,7 +180,7 @@ local function notify(title, desc, dur)
 	end
 end
 
--- ESP Implementation Logic
+-- ESP Implementation Logic (Optimized)
 local espObjects = {}
 
 local function getTeamColor(player)
@@ -242,8 +242,16 @@ for _, p in ipairs(players:GetPlayers()) do createESP(p) end
 players.PlayerAdded:Connect(createESP)
 players.PlayerRemoving:Connect(removeESP)
 
--- ESP Updater Render Loop
+-- ESP Updater Render Loop (Optimized Guard Check)
 runService.RenderStepped:Connect(function()
+	if not espSettings.Chams and not espSettings.Skeleton then
+		for _, esp in pairs(espObjects) do
+			if esp.Highlight then esp.Highlight.Enabled = false end
+			for _, bData in ipairs(esp.Bones) do bData.Line.Visible = false end
+		end
+		return
+	end
+
 	for player, esp in pairs(espObjects) do
 		local char = player.Character
 		local isTeammate = (espSettings.TeamCheck and player.Team == lp.Team)
@@ -265,9 +273,7 @@ runService.RenderStepped:Connect(function()
 				esp.Highlight.FillColor = teamCol
 				esp.Highlight.Enabled = true
 			else
-				if esp.Highlight then
-					esp.Highlight.Enabled = false
-				end
+				if esp.Highlight then esp.Highlight.Enabled = false end
 			end
 			
 			if espSettings.Skeleton then
@@ -292,9 +298,7 @@ runService.RenderStepped:Connect(function()
 					end
 				end
 			else
-				for _, bData in ipairs(esp.Bones) do
-					bData.Line.Visible = false
-				end
+				for _, bData in ipairs(esp.Bones) do bData.Line.Visible = false end
 			end
 		else
 			if esp.Highlight then esp.Highlight.Enabled = false end
@@ -303,7 +307,7 @@ runService.RenderStepped:Connect(function()
 	end
 end)
 
--- Optimized Get Closest Player Function
+-- High Performance Get Closest Player Function
 local function getClosestPlayer()
 	if not silentAimSettings.Enabled then return nil end
 	local closestPlayer = nil
@@ -316,13 +320,12 @@ local function getClosestPlayer()
 
 			local char = player.Character
 			if char then
+				local hum = char:FindFirstChildOfClass("Humanoid")
+				if silentAimSettings.KillCheck and (not hum or hum.Health <= 0) then continue end
+
 				local targetPart = char:FindFirstChild(silentAimSettings.TargetPart)
 				if targetPart then
-					local hum = char:FindFirstChildOfClass("Humanoid")
-					if silentAimSettings.KillCheck and (not hum or hum.Health <= 0) then continue end
-
 					local screenPos, onScreen = camera:WorldToViewportPoint(targetPart.Position)
-
 					if onScreen then
 						local dist = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
 						if dist < shortestDistance then
@@ -337,23 +340,33 @@ local function getClosestPlayer()
 	return closestPlayer
 end
 
--- Throttled Target Fetcher
-task.spawn(function()
-	while true do
+-- Throttled Target Fetcher (เช็คตามเวลา ไม่กิน FPS)
+local lastTargetCheck = 0
+local TARGET_INTERVAL = 0.1 -- 10 ครั้ง/วินาที (ลื่นและแม่นยำเพียงพอ)
+
+runService.Heartbeat:Connect(function()
+	local now = os.clock()
+	if now - lastTargetCheck >= TARGET_INTERVAL then
+		lastTargetCheck = now
 		if silentAimSettings.Enabled then
 			currentTarget = getClosestPlayer()
 		else
 			currentTarget = nil
 		end
-		task.wait(0.03)
 	end
 end)
 
 -- RenderStepped for Visuals Only
 runService.RenderStepped:Connect(function()
+	if not silentAimSettings.Enabled then
+		fovCircle.Visible = false
+		targetLine.Visible = false
+		return
+	end
+
 	local center = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y / 2)
 
-	if silentAimSettings.Enabled and silentAimSettings.ShowFOV then
+	if silentAimSettings.ShowFOV then
 		fovCircle.Position = center
 		fovCircle.Radius = silentAimSettings.FOV
 		fovCircle.Color = currentTarget and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 0, 0)
@@ -362,7 +375,7 @@ runService.RenderStepped:Connect(function()
 		fovCircle.Visible = false
 	end
 
-	if silentAimSettings.Enabled and silentAimSettings.ShowTargetLine and currentTarget then
+	if silentAimSettings.ShowTargetLine and currentTarget then
 		local screenPos, onScreen = camera:WorldToViewportPoint(currentTarget.Position)
 		if onScreen then
 			targetLine.From = center
@@ -387,18 +400,15 @@ oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
 		local args = {...}
 		local targetPos = currentTarget.Position
 
-		-- Camera Screen/Viewport to Ray
 		if (method == "ScreenPointToRay" or method == "ViewportPointToRay") and self:IsA("Camera") then
 			return Ray.new(camera.CFrame.Position, (targetPos - camera.CFrame.Position).Unit)
 		end
 
-		-- Workspace Raycast
 		if method == "Raycast" and self == workspace then
 			args[2] = (targetPos - args[1]).Unit * args[2].Magnitude
 			return oldNamecall(self, table.unpack(args))
 		end
 
-		-- FindPartOnRay / IgnoreList / Whitelist
 		if (method == "FindPartOnRay" or method == "FindPartOnRayWithIgnoreList" or method == "FindPartOnRayWithWhitelist") and self == workspace then
 			local currentRay = args[1]
 			if currentRay and typeof(currentRay) == "Ray" then
@@ -507,7 +517,7 @@ task.spawn(function()
 		if spoofActive and lp.Character and lp.Character:FindFirstChildOfClass("Humanoid") then
 			applySpoof()
 		end
-		task.wait(0.1)
+		task.wait(0.5)
 	end
 end)
 
