@@ -1227,13 +1227,13 @@ local function farmLoop()
 	clearPath()
 end
 
-local combatSec = win:Section({ Title = "Combat (Just Beta-have issues" })
+local combatSec = win:Section({ Title = "Combat-Just Beta-have issues" })
 local mainSec = win:Section({ Title = "Main Features" })
 local setSec = win:Section({ Title = "Settings Farm" })
 local miscSec = win:Section({ Title = "Misc" })
 
 do
-	local combatTab = combatSec:Tab({ Title = "Combat", Icon = "solar:target-bold", Border = true })
+	local combatTab = combatSec:Tab({ Title = "Silent-aim", Icon = "solar:target-bold", Border = true })
 
 	combatTab:Toggle({
 		Title = "Enable Silent Aim",
@@ -1254,7 +1254,7 @@ do
 	combatTab:Space()
 	combatTab:Toggle({ Title = "Team Check", Value = silentAimSettings.TeamCheck, Callback = function(v) silentAimSettings.TeamCheck = v end })
 	combatTab:Space()
-	combatTab:Toggle({ Title = "Kill Check (Alive Only)", Value = silentAimSettings.KillCheck, Callback = function(v) silentAimSettings.KillCheck = v end })
+	combatTab:Toggle({ Title = "Kill Check", Value = silentAimSettings.KillCheck, Callback = function(v) silentAimSettings.KillCheck = v end })
 	combatTab:Space()
 
 	combatTab:Slider({
