@@ -127,7 +127,7 @@ local cfg = {
 	Height = 2.5,
 	Amount = 5,
 	TweenDelay = 0,
-	ItemName = "Fake Diamond Ring",
+	ItemName = "Mona Lisa Painting",
 	SellName = "Smuggle Goods Seller",
 	LaunderName = "Launder Cash"
 }
