@@ -1005,7 +1005,7 @@ do
 
 	farmTab:Dropdown({
 		Title = "Select Item to Farm",
-		Values = { "Crate Of Avacados", "Wagyu Beef", "Witches Brew", "Fake Designer Sneakers", "Fake Diamond Ring" },
+		Values = { "Crate Of Avacados", "Wagyu Beef", "Witches Brew", "Fake Designer Sneakers", "Fake Diamond Ring" ,"Mona Lisa Painting" },
 		Value = cfg.ItemName,
 		Callback = function(v) cfg.ItemName = v end,
 	})
